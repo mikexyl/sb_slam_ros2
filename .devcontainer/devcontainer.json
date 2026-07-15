@@ -1,0 +1,23 @@
+{
+  "name": "SB-SLAM-ROS2 Humble CUDA",
+  "build": {
+    "context": "..",
+    "dockerfile": "../docker/Dockerfile"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspaces/sb_slam_ros2_ws,type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/sb_slam_ros2_ws",
+  "containerEnv": {
+    "ROS_DISTRO": "humble",
+    "SB_SLAM_ROS2_WS": "/workspaces/sb_slam_ros2_ws"
+  },
+  "runArgs": [
+    "--gpus=all"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-iot.vscode-ros"
+      ]
+    }
+  }
+}

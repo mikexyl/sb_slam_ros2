@@ -1,0 +1,65 @@
+repositories:
+  Kimera-VIO-ROS2:
+    type: git
+    url: https://github.com/mikexyl/Kimera-VIO-ROS2.git
+    version: package/kimera_vio_ros
+  Kimera-VIO:
+    type: git
+    url: https://github.com/mikexyl/Kimera-VIO.git
+    version: dev/code-slam
+  Kimera-RPGO:
+    type: git
+    url: https://github.com/MIT-SPARK/Kimera-RPGO.git
+    version: master
+  DBoW2:
+    type: git
+    url: https://github.com/ruffsl/DBoW2.git
+    version: patch-1
+  xfeat-cpp:
+    type: git
+    url: https://github.com/mikexyl/xfeat-cpp.git
+    version: develop
+  vilib:
+    type: git
+    url: https://github.com/mikexyl/vilib.git
+    version: master
+  aria_common:
+    type: git
+    url: https://github.com/mikexyl/aria_common.git
+    version: kimera-ros2
+  aria_visualization:
+    type: git
+    url: https://github.com/mikexyl/aria_visualization.git
+    version: kimera-ros2
+  gtsam:
+    type: git
+    url: https://github.com/mikexyl/gtsam.git
+    version: 4.3a1
+  opengv:
+    type: git
+    url: https://github.com/ruffsl/opengv.git
+    version: patch-1
+  pose_graph_tools:
+    type: git
+    url: https://github.com/MIT-SPARK/pose_graph_tools.git
+    version: ros2
+  Kimera-Multi-LCD:
+    type: git
+    url: https://github.com/mikexyl/Kimera-Multi-LCD.git
+    version: develop
+  Kimera-Distributed:
+    type: git
+    url: https://github.com/mikexyl/Kimera-Distributed.git
+    version: main
+  cbs:
+    type: git
+    url: git@github.com:mikexyl/aria_dopt.git
+    version: dev/code-slam
+  cbs_ros:
+    type: git
+    url: git@github.com:mikexyl/cbs_ros.git
+    version: main
+  vio-factors:
+    type: git
+    url: https://github.com/mikexyl/vio-factors.git
+    version: main

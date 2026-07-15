@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>sb_slam_ros2</name>
+  <version>0.1.0</version>
+  <description>Metapackage and workspace tooling for SB-SLAM-ROS2.</description>
+
+  <maintainer email="todo@example.com">SB-SLAM-ROS2 Maintainers</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>kimera_common</exec_depend>
+  <exec_depend>kimera_graph_msgs</exec_depend>
+  <exec_depend>kimera_graph_visualizer</exec_depend>
+  <exec_depend>kimera_vio</exec_depend>
+  <exec_depend>kimera_vio_ros</exec_depend>
+  <exec_depend>pose_graph_tools</exec_depend>
+  <exec_depend>pose_graph_tools_msgs</exec_depend>
+  <exec_depend>pose_graph_tools_ros</exec_depend>
+  <exec_depend>projective_mesher_msgs</exec_depend>
+  <exec_depend>kimera_multi_lcd</exec_depend>
+  <exec_depend>kimera_distributed</exec_depend>
+  <exec_depend>cbs</exec_depend>
+  <exec_depend>cbs_ros</exec_depend>
+  <exec_depend>aria_common</exec_depend>
+  <exec_depend>aria_viz</exec_depend>
+  <exec_depend>dbow2</exec_depend>
+  <exec_depend>xfeat-cpp</exec_depend>
+  <exec_depend>vilib</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>rmw_zenoh_cpp</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+
+  <!-- System libraries used by imported non-ROS CMake packages. -->
+  <exec_depend>libboost-dev</exec_depend>
+  <exec_depend>eigen</exec_depend>
+  <exec_depend>libgflags-dev</exec_depend>
+  <exec_depend>libgoogle-glog-dev</exec_depend>
+  <exec_depend>graphviz-dev</exec_depend>
+  <exec_depend>libopencv-dev</exec_depend>
+  <exec_depend>spdlog</exec_depend>
+  <exec_depend>tbb</exec_depend>
+  <exec_depend>libtiff-dev</exec_depend>
+  <exec_depend>yaml-cpp</exec_depend>
+  <exec_depend>pkg-config</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

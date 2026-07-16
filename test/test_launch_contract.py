@@ -210,6 +210,12 @@ def test_dense_mapping_is_single_robot_only_and_shares_rerun_recording():
     assert '"mono_depth.min_confidence", default_value="1.2"' in profile
     assert '"mono_depth.min_confidence": LaunchConfiguration(' in profile
     assert '"mono_depth.scale_alignment_method": "landmarks"' in profile
+    assert '"geometry_filter.enabled": LaunchConfiguration(' in profile
+    assert '"geometry_filter.pose_source": LaunchConfiguration(' in profile
+    assert (
+        '"dense_mapping.geometry_filter_pose_source",' in profile
+    )
+    assert 'default_value="da3"' in profile
     assert profile.count('"rerun_recording_id": rerun_recording_id') == 3
     assert profile.count('"rerun_application_id": rerun_application_id') == 3
     assert '"rerun.recording_id": rerun_recording_id' in profile

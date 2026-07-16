@@ -280,6 +280,22 @@ def _launch_setup(context, *args, **kwargs):
                 "max_depth_m": LaunchConfiguration(
                     "dense_mapping.max_depth_m"
                 ),
+                "geometry_filter.enabled": LaunchConfiguration(
+                    "dense_mapping.geometry_filter_enabled"
+                ),
+                "geometry_filter.pose_source": LaunchConfiguration(
+                    "dense_mapping.geometry_filter_pose_source"
+                ),
+                "geometry_filter.max_relative_depth_error": (
+                    LaunchConfiguration(
+                        "dense_mapping.geometry_filter_max_relative_depth_error"
+                    )
+                ),
+                "geometry_filter.visualization_max_relative_error": (
+                    LaunchConfiguration(
+                        "dense_mapping.geometry_filter_visualization_max_relative_error"
+                    )
+                ),
                 "rerun.enabled": "true",
                 "rerun.application_id": rerun_application_id,
                 "rerun.recording_id": rerun_recording_id,
@@ -359,6 +375,22 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "dense_mapping.max_depth_m", default_value="100.0"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.geometry_filter_enabled",
+                default_value="true",
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.geometry_filter_pose_source",
+                default_value="da3",
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.geometry_filter_max_relative_depth_error",
+                default_value="0.15",
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.geometry_filter_visualization_max_relative_error",
+                default_value="0.5",
             ),
             DeclareLaunchArgument(
                 "dense_mapping.rerun_point_radius", default_value="1.0"

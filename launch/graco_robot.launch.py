@@ -280,6 +280,12 @@ def _launch_setup(context, *args, **kwargs):
                 "max_depth_m": LaunchConfiguration(
                     "dense_mapping.max_depth_m"
                 ),
+                "submap.metric_scale_method": LaunchConfiguration(
+                    "dense_mapping.submap_metric_scale_method"
+                ),
+                "submap.anchor_method": LaunchConfiguration(
+                    "dense_mapping.submap_anchor_method"
+                ),
                 "geometry_filter.enabled": LaunchConfiguration(
                     "dense_mapping.geometry_filter_enabled"
                 ),
@@ -369,6 +375,14 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "dense_mapping.max_runs_per_submap", default_value="5"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.submap_metric_scale_method",
+                default_value="odometry",
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.submap_anchor_method",
+                default_value="odometry",
             ),
             DeclareLaunchArgument(
                 "dense_mapping.min_depth_m", default_value="0.1"

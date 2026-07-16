@@ -121,6 +121,10 @@ def test_aerial_05_uses_one_timestamped_rerun_recording():
     assert '"max_points_per_submap": LaunchConfiguration(' in profile
     assert '"dense_mapping.max_runs_per_submap", default_value="5"' in profile
     assert '"max_runs_per_submap": LaunchConfiguration(' in profile
+    assert '"submap.metric_scale_method": LaunchConfiguration(' in profile
+    assert '"submap.anchor_method": LaunchConfiguration(' in profile
+    assert '"dense_mapping.submap_metric_scale_method",' in profile
+    assert '"dense_mapping.submap_anchor_method",' in profile
     assert '"mono_depth.da3_essential_factors_enabled": "false"' in profile
     assert (
         '"mono_depth.da3_baseline_ratio_factors_enabled": "false"'
@@ -211,6 +215,9 @@ def test_dense_mapping_is_single_robot_only_and_shares_rerun_recording():
     assert '"mono_depth.min_confidence": LaunchConfiguration(' in profile
     assert '"mono_depth.scale_alignment_method": "landmarks"' in profile
     assert '"geometry_filter.enabled": LaunchConfiguration(' in profile
+    assert '"submap.metric_scale_method": LaunchConfiguration(' in profile
+    assert '"submap.anchor_method": LaunchConfiguration(' in profile
+    assert profile.count('default_value="odometry"') >= 2
     assert '"geometry_filter.pose_source": LaunchConfiguration(' in profile
     assert (
         '"dense_mapping.geometry_filter_pose_source",' in profile

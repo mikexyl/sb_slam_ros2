@@ -36,6 +36,12 @@ def _launch_setup(context, *args, **kwargs):
     num_robots = int(LaunchConfiguration("num_robots").perform(context))
     if robot_id < 0 or robot_id >= num_robots:
         raise RuntimeError("robot_id must be in [0, num_robots)")
+    dense_mapping_enabled_text = LaunchConfiguration(
+        "dense_mapping.enabled"
+    ).perform(context).lower()
+    if dense_mapping_enabled_text not in ("true", "false"):
+        raise RuntimeError("dense_mapping.enabled must be true or false")
+    dense_mapping_enabled = dense_mapping_enabled_text == "true"
 
     names_path = Path(
         LaunchConfiguration("robot_names_file").perform(context)
@@ -68,6 +74,9 @@ def _launch_setup(context, *args, **kwargs):
             "models.jist",
         )
     }
+    da3_engine = ""
+    if dense_mapping_enabled:
+        da3_engine = _require_file(context, "models.da3")
     vocabulary = LaunchConfiguration("vocabulary_path").perform(context)
     if vocabulary and not Path(vocabulary).is_file():
         raise RuntimeError("vocabulary_path does not exist")
@@ -209,7 +218,18 @@ def _launch_setup(context, *args, **kwargs):
             "frame_id.world": world_frame,
             "topic.image": image_topic,
             "topic.imu.data": imu_topic,
-            "mono_depth.enabled": "false",
+            "dense_mapping.publisher_enabled": dense_mapping_enabled_text,
+            "mono_depth.enabled": dense_mapping_enabled_text,
+            "mono_depth.engine_path": da3_engine,
+            "mono_depth.mode": "multi_view",
+            "mono_depth.da3_keyframe_selection_method": "distance",
+            "mono_depth.min_keyframe_distance_m": "10.0",
+            "mono_depth.min_confidence": LaunchConfiguration(
+                "mono_depth.min_confidence"
+            ),
+            "mono_depth.scale_alignment_method": "landmarks",
+            "mono_depth.da3_essential_factors_enabled": "false",
+            "mono_depth.da3_baseline_ratio_factors_enabled": "false",
             "use_sim_time": LaunchConfiguration("use_sim_time"),
             "use_rerun_visualizer": "true",
             "rerun_application_id": rerun_application_id,
@@ -226,10 +246,60 @@ def _launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
+    dense_mapping_launch = None
+    if dense_mapping_enabled:
+        dense_mapping_launch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [
+                        FindPackageShare("dense_mapping"),
+                        "launch",
+                        "dense_mapping.launch.py",
+                    ]
+                )
+            ),
+            launch_arguments={
+                "robot": robot_name,
+                "frame_id.map": map_frame,
+                "frame_id.odometry": world_frame,
+                "point_stride": LaunchConfiguration(
+                    "dense_mapping.point_stride"
+                ),
+                "max_points_per_view": LaunchConfiguration(
+                    "dense_mapping.max_points_per_view"
+                ),
+                "max_points_per_submap": LaunchConfiguration(
+                    "dense_mapping.max_points_per_submap"
+                ),
+                "max_runs_per_submap": LaunchConfiguration(
+                    "dense_mapping.max_runs_per_submap"
+                ),
+                "min_depth_m": LaunchConfiguration(
+                    "dense_mapping.min_depth_m"
+                ),
+                "max_depth_m": LaunchConfiguration(
+                    "dense_mapping.max_depth_m"
+                ),
+                "rerun.enabled": "true",
+                "rerun.application_id": rerun_application_id,
+                "rerun.recording_id": rerun_recording_id,
+                "rerun.host": rerun_host,
+                "rerun.entity_prefix": f"{robot_name}/dense_mapping",
+                "rerun.point_radius": LaunchConfiguration(
+                    "dense_mapping.rerun_point_radius"
+                ),
+                "sparse_global_ba.enabled": "false",
+            }.items(),
+        )
+
     # Keep delayed substitutions isolated: the generic VIO launch starts its
     # node immediately, while its bag callback captures concrete topic names.
     delayed_vio_launch = TimerAction(period=1.0, actions=[vio_launch])
-    return [distributed_launch, cbs_launch, delayed_vio_launch]
+    actions = [distributed_launch, cbs_launch]
+    if dense_mapping_launch is not None:
+        actions.append(dense_mapping_launch)
+    actions.append(delayed_vio_launch)
+    return actions
 
 
 def generate_launch_description():
@@ -257,6 +327,7 @@ def generate_launch_description():
             DeclareLaunchArgument("models.lightglue_frontend", default_value=""),
             DeclareLaunchArgument("models.lightglue_lcd", default_value=""),
             DeclareLaunchArgument("models.jist", default_value=""),
+            DeclareLaunchArgument("models.da3", default_value=""),
             DeclareLaunchArgument("vocabulary_path", default_value=""),
             DeclareLaunchArgument("world_frame", default_value="world"),
             DeclareLaunchArgument("image_topic", default_value=""),
@@ -267,6 +338,34 @@ def generate_launch_description():
                 "verification_frame_batch_size", default_value="50"
             ),
             DeclareLaunchArgument("flush_period_s", default_value="1.0"),
+            DeclareLaunchArgument(
+                "dense_mapping.enabled", default_value="false"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.point_stride", default_value="4"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.max_points_per_view", default_value="100000"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.max_points_per_submap",
+                default_value="200000",
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.max_runs_per_submap", default_value="5"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.min_depth_m", default_value="0.1"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.max_depth_m", default_value="100.0"
+            ),
+            DeclareLaunchArgument(
+                "dense_mapping.rerun_point_radius", default_value="1.0"
+            ),
+            DeclareLaunchArgument(
+                "mono_depth.min_confidence", default_value="1.2"
+            ),
             DeclareLaunchArgument("play_bag", default_value="false"),
             DeclareLaunchArgument("use_sim_time", default_value="true"),
             DeclareLaunchArgument("bag_publish_clock", default_value="true"),

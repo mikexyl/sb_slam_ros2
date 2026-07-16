@@ -15,6 +15,7 @@
   <exec_depend>kimera_graph_visualizer</exec_depend>
   <exec_depend>kimera_vio</exec_depend>
   <exec_depend>kimera_vio_ros</exec_depend>
+  <exec_depend>dense_mapping</exec_depend>
   <exec_depend>pose_graph_tools</exec_depend>
   <exec_depend>pose_graph_tools_msgs</exec_depend>
   <exec_depend>pose_graph_tools_ros</exec_depend>

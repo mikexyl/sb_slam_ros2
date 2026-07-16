@@ -45,3 +45,26 @@ the same helper.
 
 Ported package sources are tracked in `sb_slam_ros2.repos`. See
 `docs/PORTING.md` for the ROS 2 branches checked before importing packages.
+
+## Single-robot loop closure
+
+`graco_single_robot_loop_closure.launch.py` runs one namespaced robot through
+the complete multi-robot stack: Kimera-VIO with the descriptor bridge enabled,
+Kimera-Distributed configured for one robot and intra-robot loop detection, and
+CBS online pose-graph optimization. It defaults to the aerial-05 ROS 2 bag.
+
+```bash
+MODEL_DIR="$PWD/src/xfeat-cpp/onnx_model"
+ros2 launch sb_slam_ros2 graco_single_robot_loop_closure.launch.py \
+  models.xfeat:="$MODEL_DIR/xfeat_320x224.onnx" \
+  models.xfeat_interp_bilinear:="$MODEL_DIR/interpolator_bilinear_320x224.onnx" \
+  models.xfeat_interp_bicubic:="$MODEL_DIR/interpolator_bicubic_320x224.onnx" \
+  models.xfeat_interp_nearest:="$MODEL_DIR/interpolator_nearest_320x224.onnx" \
+  models.lightglue_frontend:="$MODEL_DIR/lg_320x224_dyn.onnx" \
+  models.lightglue_lcd:="$MODEL_DIR/lg_320x224_dyn.onnx" \
+  models.jist:="$MODEL_DIR/JIST_r18_512_seqgem_simplified.onnx"
+```
+
+The launch fails immediately when a required model, robot-name configuration,
+or ROS 2 bag is missing. Its Rerun recording name includes the launch system's
+local timestamp.

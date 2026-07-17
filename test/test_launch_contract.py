@@ -350,6 +350,15 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     )
     assert "'playback_rate', default_value='5.0'" in offline_launch
     assert "'playback_delay_s', default_value='3.0'" in offline_launch
+    assert "'playback_duration_s', default_value='118.0'" in offline_launch
+    assert "'inference_drain_delay_s', default_value='60.0'" in offline_launch
+    assert "'timeout'," in offline_launch
+    assert "'--signal=INT'," in offline_launch
+    assert "LaunchConfiguration('playback_delay_s')" in offline_launch
+    assert "LaunchConfiguration('playback_duration_s')" in offline_launch
+    assert "LaunchConfiguration('playback_rate')" in offline_launch
+    assert "') / float('," in offline_launch
+    assert "') + 1.0)'," in offline_launch
     assert "'raw_image_qos.reliability': 'reliable'" in offline_launch
     assert "'raw_image_qos.depth': '200'" in offline_launch
     assert "'image_cache.duration_s'" in offline_launch
@@ -366,6 +375,14 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "'submap_sparse_ba.global.enabled': LaunchConfiguration(" in (
         offline_launch
     )
+    assert (
+        "'submap_sparse_ba.depth_refiner.enabled', default_value='true'"
+        in offline_launch
+    )
+    assert (
+        "'submap_sparse_ba.depth_refiner.enabled': LaunchConfiguration("
+        in offline_launch
+    )
     assert "'submap_sparse_ba.pose_initialization_source'," in offline_launch
     assert "default_value='first_estimate'" in offline_launch
     assert "'submap_sparse_ba.pose_initialization_source': (" in (
@@ -375,6 +392,25 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "'topics.global_refined_landmarks'" in dense_launch
     assert "'global.enabled': LaunchConfiguration(" in dense_launch
     assert "'pose_initialization_source': LaunchConfiguration(" in dense_launch
+    assert "'topics.depth_refined_da3_runs'" in dense_launch
+    assert "'topics.depth_refined_keyframes'" in dense_launch
+    assert "'node.name': 'depth_refined_mapper'" in dense_launch
+    assert "'depth_refined/da3_runs'" in dense_launch
+    assert "'depth_refined/keyframes'" in dense_launch
+    assert "'max_runs_per_submap': '5'" in dense_launch
+    assert "'input_qos.depth': '1000'" in dense_launch
+    assert "'sparse_state_outputs.enabled': 'false'" in dense_launch
+    assert dense_launch.count("'submap.metric_scale_method': 'none'") >= 2
+    assert dense_launch.count("'submap.anchor_method': 'odometry'") >= 2
+    assert dense_launch.count("'submap.overlap_scale_method': 'none'") >= 2
+    assert dense_launch.count("'geometry_filter.enabled': 'false'") >= 2
+    assert (
+        dense_launch.count("'geometry_filter.apply_to_mapping': 'false'")
+        >= 2
+    )
+    assert "'original'," in dense_launch
+    assert "'refined'," in dense_launch
+    assert "full_union" not in dense_launch
 
     visualizer = _text("dense_mapping/src/rerun_visualizer.cpp")
     assert '"sparse_ba/global"' in visualizer

@@ -383,6 +383,58 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
         "'submap_sparse_ba.depth_refiner.enabled': LaunchConfiguration("
         in offline_launch
     )
+    assert (
+        "'submap_sparse_ba.depth_refiner.grid_rows', default_value='4'"
+        in offline_launch
+    )
+    assert (
+        "'submap_sparse_ba.depth_refiner.grid_cols', default_value='4'"
+        in offline_launch
+    )
+    assert (
+        "'submap_sparse_ba.depth_refiner.grid_rows': LaunchConfiguration("
+        in offline_launch
+    )
+    assert (
+        "'submap_sparse_ba.depth_refiner.grid_cols': LaunchConfiguration("
+        in offline_launch
+    )
+    offline_concatenated = re.sub(r"'\s*'", "", offline_launch)
+    dense_concatenated = re.sub(r"'\s*'", "", dense_launch)
+    assert (
+        "'submap_sparse_ba.depth_refiner."
+        "sparse_landmark_constraints.enabled', default_value='true'"
+        in offline_concatenated
+    )
+    assert (
+        "'submap_sparse_ba.depth_refiner."
+        "sparse_landmark_constraints.enabled', default_value='true'"
+        in dense_concatenated
+    )
+    assert "'depth_refiner.sparse_landmark_constraints.enabled'" in (
+        dense_launch
+    )
+    for suffix, default in (
+        ('enabled', 'true'),
+        ('sample_stride', '16'),
+        ('maximum_constraints', '2000'),
+        ('measurement_sigma', '0.20'),
+        ('max_relative_depth_error', '0.25'),
+    ):
+        assert (
+            "'submap_sparse_ba.depth_refiner.two_view_consistency."
+            f"{suffix}'" in offline_concatenated
+        )
+        assert f"default_value='{default}'" in offline_launch
+        assert (
+            "'submap_sparse_ba.depth_refiner.two_view_consistency."
+            f"{suffix}'" in dense_concatenated
+        )
+    assert "'depth_refiner.two_view_consistency.enabled'" in dense_launch
+    assert (
+        "'depth_refiner.two_view_consistency.maximum_constraints'"
+        in dense_launch
+    )
     assert "'submap_sparse_ba.pose_initialization_source'," in offline_launch
     assert "default_value='first_estimate'" in offline_launch
     assert "'submap_sparse_ba.pose_initialization_source': (" in (

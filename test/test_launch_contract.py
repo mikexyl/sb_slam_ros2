@@ -269,8 +269,114 @@ def test_vio_dense_mapping_publisher_topics_qos_and_gating():
     assert "registerBackendOutputCallback" in backend
     assert "dense_mapping_publisher_->publish(output, odometry)" in backend
 
+    mapping_publisher = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/src/interfaces/"
+        "dense_mapping_publisher.cpp"
+    )
+    assert '"mapping/local_window_poses"' in mapping_publisher
+    assert "output.state_.keys()" in mapping_publisher
+    assert "odometry_T_smoother" in mapping_publisher
+    assert "pose_graph_tools_msgs::msg::PoseGraph" in mapping_publisher
+
     vio_header = _text(
         "Kimera-VIO/include/kimera-vio/backend/VioBackend-definitions.h"
     )
     assert "keyframe_measurements_" in vio_header
     assert "da3_packet_" in vio_header
+
+
+def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
+    experiment = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/launch/"
+        "graco_aerial_05_odometry_conditioned_da3.launch.py"
+    )
+    assert "DA3-LARGE-1.1_pose_v2_350x504_fp16.engine" in experiment
+    assert "LeftCameraParams.yaml" in experiment
+    assert "'mono_depth.enabled': 'false'" in experiment
+    assert "'dense_mapping.publisher_enabled': 'true'" in experiment
+    assert "'use_lcd': '0'" in experiment
+    assert "'multi_robot_bridge.enabled': 'false'" in experiment
+    assert "'mono_depth.da3_essential_factors_enabled': 'false'" in experiment
+    assert (
+        "'mono_depth.da3_baseline_ratio_factors_enabled': 'false'"
+        in experiment
+    )
+    assert "'selection.minimum_distance_m': '10.0'" in experiment
+    assert "'minimum_confidence': '1.2'" in experiment
+    assert "'record_experiment_inputs', default_value='true'" in experiment
+    assert "'/a5/kimera_vio/mapping/local_window_poses'" in experiment
+    assert experiment.count("rerun_recording_id") >= 3
+    assert experiment.count("rerun_application_id") >= 3
+
+    dense_launch = _text(
+        "dense_mapping/launch/odometry_conditioned_da3.launch.py"
+    )
+    assert "odometry_conditioned_da3_node" in dense_launch
+    assert "camera_calibration_path" in dense_launch
+    assert "topics.camera_info" not in dense_launch
+    assert "'submap.metric_scale_method': 'none'" in dense_launch
+    assert "'submap.anchor_method': 'odometry'" in dense_launch
+    assert "'submap.overlap_scale_method': 'none'" in dense_launch
+    assert "'geometry_filter.enabled': 'false'" in dense_launch
+    assert "'geometry_filter.apply_to_mapping': 'false'" in dense_launch
+    assert "'geometry_filter.pose_source': 'da3'" in dense_launch
+    assert "geometry_config.pose_source = GeometryPoseSource::kOdometry" in (
+        _text("dense_mapping/src/odometry_conditioned_da3_node.cpp")
+    )
+    assert "poseToMessage(da3_context_T_current)" in (
+        _text("dense_mapping/src/odometry_conditioned_da3_node.cpp")
+    )
+    assert "'max_runs_per_submap', default_value='5'" in dense_launch
+    assert "topics.local_window_poses" in dense_launch
+    assert "'ros2'," in dense_launch
+    assert "'bag'," in dense_launch
+    assert "'record'," in dense_launch
+    assert "input_bag_record.output_directory" in dense_launch
+
+    visualizer = _text("dense_mapping/src/rerun_visualizer.cpp")
+    assert "set_time_timestamp_nanos_since_epoch" in visualizer
+    assert "std::chrono::system_clock" not in visualizer
+
+    vio_visualizer = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/include/kimera_vio_ros/"
+        "interfaces/RerunVisualizer.h"
+    )
+    assert "setTimeNSec(static_cast<size_t>(input.timestamp_))" in vio_visualizer
+    assert "std::chrono::system_clock" not in vio_visualizer
+
+    offline_launch = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/launch/"
+        "graco_aerial_05_odometry_conditioned_da3_offline.launch.py"
+    )
+    assert "'playback_rate', default_value='5.0'" in offline_launch
+    assert "'playback_delay_s', default_value='3.0'" in offline_launch
+    assert "'raw_image_qos.reliability': 'reliable'" in offline_launch
+    assert "'raw_image_qos.depth': '200'" in offline_launch
+    assert "'image_cache.duration_s'" in offline_launch
+    assert "--wait-for-all-acked" in offline_launch
+    assert "--start-paused" in offline_launch
+    assert "'/rosbag2_player/resume'" in offline_launch
+    assert "'rosbag2_interfaces/srv/Resume'" in offline_launch
+    assert "OnProcessExit" in offline_launch
+    assert "inference_drain_delay_s" in offline_launch
+    assert "input_bag_record.enabled': 'false'" in offline_launch
+    assert "'submap_sparse_ba.global.enabled', default_value='true'" in (
+        offline_launch
+    )
+    assert "'submap_sparse_ba.global.enabled': LaunchConfiguration(" in (
+        offline_launch
+    )
+    assert "'submap_sparse_ba.pose_initialization_source'," in offline_launch
+    assert "default_value='first_estimate'" in offline_launch
+    assert "'submap_sparse_ba.pose_initialization_source': (" in (
+        offline_launch
+    )
+
+    assert "'topics.global_refined_landmarks'" in dense_launch
+    assert "'global.enabled': LaunchConfiguration(" in dense_launch
+    assert "'pose_initialization_source': LaunchConfiguration(" in dense_launch
+
+    visualizer = _text("dense_mapping/src/rerun_visualizer.cpp")
+    assert '"sparse_ba/global"' in visualizer
+    assert 'prefix + "/odometry_trajectory"' in visualizer
+    assert 'prefix + "/optimized_trajectory"' in visualizer

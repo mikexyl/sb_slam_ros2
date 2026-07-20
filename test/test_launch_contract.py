@@ -332,6 +332,8 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "'bag'," in dense_launch
     assert "'record'," in dense_launch
     assert "input_bag_record.output_directory" in dense_launch
+    mapper_launch = _text("dense_mapping/launch/dense_mapping.launch.py")
+    assert "on_exit=EmitEvent(event=Shutdown(" in mapper_launch
 
     visualizer = _text("dense_mapping/src/rerun_visualizer.cpp")
     assert "set_time_timestamp_nanos_since_epoch" in visualizer
@@ -348,7 +350,15 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
         "Kimera-VIO-ROS2/kimera_vio_ros/launch/"
         "graco_aerial_05_odometry_conditioned_da3_offline.launch.py"
     )
-    assert "'playback_rate', default_value='5.0'" in offline_launch
+    assert "'playback_rate', default_value='1.0'" in offline_launch
+    assert "'start_zenoh_router', default_value='true'" in offline_launch
+    assert "'zenoh_router_startup_delay_s', default_value='1.0'" in (
+        offline_launch
+    )
+    assert "'rmw_zenoh_cpp', 'rmw_zenohd'" in offline_launch
+    assert "reason='ROS 2 Zenoh router exited'" in offline_launch
+    assert "'request_global_ba'" in offline_launch
+    assert "'std_srvs/srv/Trigger'" in offline_launch
     assert "'playback_delay_s', default_value='3.0'" in offline_launch
     assert "'playback_duration_s', default_value='118.0'" in offline_launch
     assert "'inference_drain_delay_s', default_value='60.0'" in offline_launch
@@ -361,6 +371,10 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "') + 1.0)'," in offline_launch
     assert "'raw_image_qos.reliability': 'reliable'" in offline_launch
     assert "'raw_image_qos.depth': '200'" in offline_launch
+    assert "'output_qos.depth', default_value='1000'" in offline_launch
+    assert "'output_qos.depth': LaunchConfiguration(" in offline_launch
+    assert "'output_qos.depth', default_value='1000'" in dense_launch
+    assert "'output_qos.depth': LaunchConfiguration(" in dense_launch
     assert "'image_cache.duration_s'" in offline_launch
     assert "--wait-for-all-acked" in offline_launch
     assert "--start-paused" in offline_launch
@@ -414,8 +428,45 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "'depth_refiner.sparse_landmark_constraints.enabled'" in (
         dense_launch
     )
+    assert re.search(
+        r"'submap_sparse_ba\.depth_refiner\.landmark_support_filter\."
+        r"enabled',\s*default_value='true'",
+        offline_launch,
+    )
+    assert re.search(
+        r"'submap_sparse_ba\.depth_refiner\.landmark_support_filter\."
+        r"enabled',\s*default_value='false'",
+        dense_launch,
+    )
     for suffix, default in (
-        ('enabled', 'true'),
+        ('radius_px', '128'),
+        ('minimum_landmarks', '3'),
+    ):
+        argument = (
+            "'submap_sparse_ba.depth_refiner.landmark_support_filter."
+            f"{suffix}'"
+        )
+        assert argument in offline_concatenated
+        assert argument in dense_concatenated
+        assert f"default_value='{default}'" in offline_launch
+        assert f"default_value='{default}'" in dense_launch
+    assert "'depth_refiner.landmark_support_filter.enabled'" in dense_launch
+    assert "'depth_refiner.landmark_support_filter.radius_px'" in dense_launch
+    assert (
+        "'depth_refiner.landmark_support_filter.minimum_landmarks'"
+        in dense_launch
+    )
+    assert re.search(
+        r"'submap_sparse_ba\.depth_refiner\.two_view_consistency\."
+        r"enabled',\s*default_value='false'",
+        offline_launch,
+    )
+    assert re.search(
+        r"'submap_sparse_ba\.depth_refiner\.two_view_consistency\."
+        r"enabled',\s*default_value='true'",
+        dense_launch,
+    )
+    for suffix, default in (
         ('sample_stride', '16'),
         ('maximum_constraints', '2000'),
         ('measurement_sigma', '0.20'),
@@ -442,26 +493,87 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     )
 
     assert "'topics.global_refined_landmarks'" in dense_launch
+    assert "'services.request_global_ba'" in dense_launch
     assert "'global.enabled': LaunchConfiguration(" in dense_launch
     assert "'pose_initialization_source': LaunchConfiguration(" in dense_launch
     assert "'topics.depth_refined_da3_runs'" in dense_launch
     assert "'topics.depth_refined_keyframes'" in dense_launch
     assert "'node.name': 'depth_refined_mapper'" in dense_launch
+    assert "'node.name': 'odometry_anchored_mapper'" in dense_launch
+    assert "'node.name': 'da3_chain_mapper'" in dense_launch
+    assert "'node.name': 'no_pose_da3_mapper'" in dense_launch
+    # Every pose-conditioned mapper consumes the one pose-scale-adjusted
+    # stream; only the no-pose comparison has a native-scale stream.
+    assert "'topics.native_da3_runs'" not in dense_launch
+    assert "'native_da3_runs'" not in dense_launch
+    da3_chain_section = dense_launch.split('da3_chain_mapper =', 1)[1]
+    da3_chain_section = da3_chain_section.split('no_pose_da3_mapper =', 1)[0]
+    assert "'topics.da3_runs'" in da3_chain_section
+    assert "'da3_runs'" in da3_chain_section
+    assert "'unconditioned_da3_runs'" not in da3_chain_section
+    assert "'topics.unconditioned_da3_runs'" in dense_launch
+    assert dense_launch.count("'unconditioned_da3_runs'") >= 2
+    assert dense_launch.count(
+        'GroupAction(actions=[IncludeLaunchDescription('
+    ) == 4
+    assert (
+        "'comparison.da3_chain.enabled', default_value='false'"
+        in dense_launch
+    )
+    assert "LaunchConfiguration('comparison.da3_chain.enabled')" in (
+        dense_launch
+    )
+    assert (
+        "'comparison.no_pose_da3.enabled', default_value='false'"
+        in dense_launch
+    )
+    assert "LaunchConfiguration('comparison.no_pose_da3.enabled')" in (
+        dense_launch
+    )
     assert "'depth_refined/da3_runs'" in dense_launch
     assert "'depth_refined/keyframes'" in dense_launch
     assert "'max_runs_per_submap': '5'" in dense_launch
-    assert "'input_qos.depth': '1000'" in dense_launch
+    assert dense_launch.count("'input_qos.depth': '1000'") == 4
+    assert dense_launch.count('on_exit=EmitEvent(event=Shutdown(') == 2
     assert "'sparse_state_outputs.enabled': 'false'" in dense_launch
     assert dense_launch.count("'submap.metric_scale_method': 'none'") >= 2
     assert dense_launch.count("'submap.anchor_method': 'odometry'") >= 2
+    assert dense_launch.count("'submap.view_pose_method': 'odometry'") == 1
+    assert dense_launch.count("'submap.view_pose_method': 'da3'") == 3
     assert dense_launch.count("'submap.overlap_scale_method': 'none'") >= 2
     assert dense_launch.count("'geometry_filter.enabled': 'false'") >= 2
     assert (
         dense_launch.count("'geometry_filter.apply_to_mapping': 'false'")
         >= 2
     )
-    assert "'original'," in dense_launch
-    assert "'refined'," in dense_launch
+    for entity in (
+        "'alignments',",
+        "'odometry_anchored_da3',",
+        "'da3_chain',",
+        "'no_pose_da3',",
+        "'grid_ba',",
+    ):
+        assert entity in dense_launch
+    assert "'submap.anchor_method': 'da3'" in dense_launch
+    assert "da3_chain/map/points" in dense_concatenated
+    assert "no_pose_da3/map/points" in dense_concatenated
+    assert (
+        "'comparison.da3_chain.enabled', default_value='true'"
+        in offline_launch
+    )
+    assert "'comparison.da3_chain.enabled': LaunchConfiguration(" in (
+        offline_launch
+    )
+    assert (
+        "'comparison.no_pose_da3.enabled', default_value='false'"
+        in offline_launch
+    )
+    assert "'comparison.no_pose_da3.enabled': LaunchConfiguration(" in (
+        offline_launch
+    )
+    assert 'DA3-LARGE-1.1_multiview_v2_350x504_fp16.engine' in (
+        offline_launch
+    )
     assert "full_union" not in dense_launch
 
     visualizer = _text("dense_mapping/src/rerun_visualizer.cpp")

@@ -56,7 +56,8 @@ def test_distributed_contract_snapshot_bootstrap_and_cbs_qos():
 
     cbs = _text("cbs_ros/src/cbs_ros_node.cpp")
     assert '/kimera_distributed/pose_graph/updates' in cbs
-    assert '.reliable().transient_local()' in cbs
+    assert "pose_graph_qos.transient_local()" in cbs
+    assert "pose_graph_qos.durability_volatile()" in cbs
 
 
 def test_graco_profile_enables_bridge_only_in_multi_robot_profile():
@@ -174,6 +175,108 @@ def test_aerial_06_07_uses_separate_bags_without_cross_bag_clock():
     assert "TimerAction(period=1.0, actions=[vio_launch])" in profile
 
 
+def test_aerial_05_07_records_cbs_and_global_ba_inputs():
+    launch = _module(
+        "sb_slam_ros2/launch/graco_aerial_05_07_multi_robot.launch.py"
+    )
+    recording_id = launch._timestamped_recording_id()
+    assert re.fullmatch(
+        r"graco_aerial_05_07_\d{8}_\d{6}_[+-]\d{4}", recording_id
+    )
+    assert launch._RECORDED_TOPICS == (
+        "/a5/kimera_vio/pose_graph/updates",
+        "/a5/kimera_vio/mapping/local_window_poses",
+        "/a5/kimera_vio/mapping/keyframes",
+        "/a5/kimera_distributed/pose_graph/updates",
+        "/a5/kimera_distributed/keyframe_loop_closures",
+        "/a7/kimera_vio/pose_graph/updates",
+        "/a7/kimera_vio/mapping/local_window_poses",
+        "/a7/kimera_vio/mapping/keyframes",
+        "/a7/kimera_distributed/pose_graph/updates",
+        "/a7/kimera_distributed/keyframe_loop_closures",
+    )
+
+    launch_text = _text(
+        "sb_slam_ros2/launch/graco_aerial_05_07_multi_robot.launch.py"
+    )
+    assert '"use_sim_time": "false"' in launch_text
+    assert '"bag_publish_clock": "false"' in launch_text
+    assert '"record_output", default_value="true"' in launch_text
+    assert (
+        'on_exit=EmitEvent(\n'
+        '            event=Shutdown(reason="A5/A7 output recorder exited")'
+        in launch_text
+    )
+    assert '"loop_closure.alpha", default_value="0.7"' in launch_text
+    assert (
+        '"loop_closure.adaptive_scoring_tau_max",' in launch_text
+    )
+
+    profile = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    assert (
+        '"adaptive_scoring_tau_max": LaunchConfiguration(' in profile
+    )
+    assert (
+        '"loop_closure.adaptive_scoring_tau_max",\n'
+        '                default_value="0.7"' in profile
+    )
+
+    names = _text("Kimera-Distributed/params/robot_names_graco_57.yaml")
+    assert names == "robot0_name: a5\nrobot1_name: a7\n"
+
+
+def test_aerial_05_07_offline_runs_two_local_ba_nodes_with_cbs():
+    launch = _module(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_07_global_sparse_ba_offline.launch.py"
+    )
+    recording_id = launch._timestamped_recording_id()
+    assert re.fullmatch(
+        r"graco-aerial-05-07-two-ba-offline-"
+        r"\d{8}_\d{6}_[+-]\d{4}",
+        recording_id,
+    )
+    assert launch._REPLAY_TOPICS == (
+        "/a5/kimera_vio/mapping/keyframes",
+        "/a7/kimera_vio/mapping/keyframes",
+        "/a5/kimera_vio/mapping/local_window_poses",
+        "/a7/kimera_vio/mapping/local_window_poses",
+        "/a5/kimera_vio/pose_graph/updates",
+        "/a7/kimera_vio/pose_graph/updates",
+        "/a5/kimera_distributed/pose_graph/updates",
+        "/a7/kimera_distributed/pose_graph/updates",
+        "/a5/kimera_distributed/keyframe_loop_closures",
+        "/a7/kimera_distributed/keyframe_loop_closures",
+    )
+    text = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_07_global_sparse_ba_offline.launch.py"
+    )
+    assert 'ba_nodes = {"a5": _ba_node("a5", 0), "a7": _ba_node("a7", 1)}' in text
+    assert text.count('executable="global_sparse_ba_node"') == 1
+    assert '"loop_closure.required": False' in text
+    assert '"shutdown_after_optimization": True' in text
+    assert 'f"experiments/{robot}/global_sparse_ba"' in text
+    assert 'package="cbs_ros"' in text
+    assert 'reason=f"{robot} CBS node exited"' in text
+    assert '"cbs_log_dir",\n            default_value=""' in text
+    cbs = _text("cbs_ros/src/cbs_ros_node.cpp")
+    assert "if (!log_dir_str.empty())" in cbs
+    assert "CBS filesystem logging disabled because log_dir is empty" in cbs
+    assert 'expected_return_codes=(0,)' in text
+    assert "A5 and A7 global sparse BA completed" in text
+    assert "timed out waiting for both global BA nodes" in text
+    assert "local_loop_closures" in text
+    assert "rerun.timestamp_offset_ns" not in text
+    assert "rerun_timestamp_offset_ns" not in text
+    assert "rerun_timestamp_offset_ns" not in cbs
+    assert "viz_->setTime();" in cbs
+    assert "latest_sensor_timestamp_ns_" not in cbs
+    assert '"additional_pose_graph_topics": [' in text
+    assert '"pose_graph_transient_local": False' in text
+    assert "pose_graph_subscriptions_" in cbs
+
+
 def test_single_robot_launch_keeps_distributed_and_cbs_enabled():
     launch = _module(
         "sb_slam_ros2/launch/graco_single_robot_loop_closure.launch.py"
@@ -191,7 +294,8 @@ def test_single_robot_launch_keeps_distributed_and_cbs_enabled():
     assert '"play_bag": "true"' in launch_text
     assert '"use_sim_time": "true"' in launch_text
     assert '"bag_publish_clock": "true"' in launch_text
-    assert '"dense_mapping.enabled": "true"' in launch_text
+    assert '"dense_mapping.enabled": "false"' in launch_text
+    assert '"keyframe_state.publisher_enabled": "true"' in launch_text
     assert '"models.da3": LaunchConfiguration("models.da3")' in launch_text
     assert '"graco_robot.launch.py"' in launch_text
 
@@ -202,12 +306,75 @@ def test_single_robot_launch_keeps_distributed_and_cbs_enabled():
     assert '"multi_robot_bridge.enabled": "true"' in profile
 
 
+def test_graco_ground_01_02_03_matches_ros1_and_disables_dense_mapping():
+    launch = _module(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_multi_robot.launch.py"
+    )
+    recording_id = launch._timestamped_recording_id()
+    assert re.fullmatch(
+        r"graco_ground_01_02_03_\d{8}_\d{6}_[+-]\d{4}", recording_id
+    )
+    assert launch._EXPECTED_ROBOT_NAMES == ("g1", "g2", "g3")
+    assert launch._BAG_ARGUMENTS == (
+        "ground_01_bag_path",
+        "ground_02_bag_path",
+        "ground_03_bag_path",
+    )
+    assert launch._SOURCE_LEFT_IMAGE_TOPIC == "/camera_left/image_raw"
+    assert launch._SOURCE_RIGHT_IMAGE_TOPIC == "/camera_right/image_raw"
+    assert launch._SOURCE_IMU_TOPIC == "/gnss/imu"
+
+    experiment = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_multi_robot.launch.py"
+    )
+    assert 'default_value="0.8"' in experiment
+    assert '"graco_ground_robot.launch.py"' in experiment
+    assert '"/data/graco/ground-01"' in experiment
+    assert '"/data/graco/ground-02"' in experiment
+    assert '"/data/graco/ground-03_ros2"' in experiment
+    assert '"xfeat_320x224_fp16.engine"' in experiment
+    assert '"lg_320x224_dyn_min1_fp16.engine"' in experiment
+    assert "models.xfeat_interp_bilinear" not in experiment
+    assert '"--topics"' in experiment
+    assert '"--remap"' in experiment
+    assert '"--clock"' not in experiment
+
+    profile = _text(
+        "sb_slam_ros2/launch/graco_ground_robot.launch.py"
+    )
+    assert '"dataset_name": "GrAcoGnd"' in profile
+    assert '"dataset_name": "GrAcoGndStereoXfeat"' in profile
+    assert '"pgo_formulation": "sim3"' in profile
+    assert '"belief_republish_hellinger_threshold"' in profile
+    assert '"dense_mapping.publisher_enabled": "false"' in profile
+    assert '"mono_depth.enabled": "false"' in profile
+    assert 'FindPackageShare("dense_mapping")' not in profile
+
+    cbs_launch = _text("cbs_ros/launch/cbs_ros_node.launch.py")
+    assert "if additional_pose_graph_topics:" in cbs_launch
+    assert (
+        'params["additional_pose_graph_topics"] = additional_pose_graph_topics'
+        in cbs_launch
+    )
+
+    stereo_vio = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/launch/kimera_vio_ros.launch.py"
+    )
+    assert "'dense_mapping.publisher_enabled'" in stereo_vio
+    assert "'dense_mapping.publisher_enabled': LaunchConfiguration(" in (
+        stereo_vio
+    )
+
+
 def test_dense_mapping_is_single_robot_only_and_shares_rerun_recording():
     profile = _text("sb_slam_ros2/launch/graco_robot.launch.py")
     assert '"dense_mapping.enabled", default_value="false"' in profile
     assert 'FindPackageShare("dense_mapping")' in profile
     assert 'actions.append(dense_mapping_launch)' in profile
-    assert '"dense_mapping.publisher_enabled": dense_mapping_enabled_text' in profile
+    assert '"keyframe_state.publisher_enabled", default_value="true"' in profile
+    assert '"dense_mapping.publisher_enabled": LaunchConfiguration(' in profile
     assert '"mono_depth.mode": "multi_view"' in profile
     assert '"mono_depth.da3_keyframe_selection_method": "distance"' in profile
     assert '"mono_depth.min_keyframe_distance_m": "10.0"' in profile
@@ -290,7 +457,8 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
         "Kimera-VIO-ROS2/kimera_vio_ros/launch/"
         "graco_aerial_05_odometry_conditioned_da3.launch.py"
     )
-    assert "DA3-LARGE-1.1_pose_v2_350x504_fp16.engine" in experiment
+    assert "DeclareLaunchArgument('engine_path')" in experiment
+    assert "DA3-LARGE-1.1_pose_v2_350x504_fp16.engine" not in experiment
     assert "LeftCameraParams.yaml" in experiment
     assert "'mono_depth.enabled': 'false'" in experiment
     assert "'dense_mapping.publisher_enabled': 'true'" in experiment
@@ -303,6 +471,20 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     )
     assert "'selection.minimum_distance_m': '10.0'" in experiment
     assert "'minimum_confidence': '1.2'" in experiment
+    assert "'max_runs_per_submap', default_value='1'" in experiment
+    assert "'max_runs_per_submap': LaunchConfiguration(" in experiment
+    assert (
+        "'geometry_filter.minimum_disparity_px', default_value='100.0'"
+        in experiment
+    )
+    assert (
+        "'geometry_filter.visualization_max_disparity_px',"
+        "\n            default_value='100.0'"
+        in experiment
+    )
+    assert "'geometry_filter.minimum_disparity_px': LaunchConfiguration(" in (
+        experiment
+    )
     assert "'record_experiment_inputs', default_value='true'" in experiment
     assert "'/a5/kimera_vio/mapping/local_window_poses'" in experiment
     assert experiment.count("rerun_recording_id") >= 3
@@ -315,18 +497,29 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "camera_calibration_path" in dense_launch
     assert "topics.camera_info" not in dense_launch
     assert "'submap.metric_scale_method': 'none'" in dense_launch
-    assert "'submap.anchor_method': 'odometry'" in dense_launch
+    assert "'submap.anchor_method': anchor" in dense_launch
+    assert (
+        "'odometry_anchored_mapper', 'da3_runs', '', 'odometry', 'da3'"
+        in dense_launch
+    )
     assert "'submap.overlap_scale_method': 'none'" in dense_launch
     assert "'geometry_filter.enabled': 'false'" in dense_launch
     assert "'geometry_filter.apply_to_mapping': 'false'" in dense_launch
     assert "'geometry_filter.pose_source': 'da3'" in dense_launch
+    assert (
+        "'geometry_filter.minimum_disparity_px', default_value='10.0'"
+        in dense_launch
+    )
+    assert "'geometry_filter.minimum_disparity_px': LaunchConfiguration(" in (
+        dense_launch
+    )
     assert "geometry_config.pose_source = GeometryPoseSource::kOdometry" in (
-        _text("dense_mapping/src/odometry_conditioned_da3_node.cpp")
+        _text("dense_mapping/src/nodes/odometry_conditioned_da3_node.cpp")
     )
     assert "poseToMessage(da3_context_T_current)" in (
-        _text("dense_mapping/src/odometry_conditioned_da3_node.cpp")
+        _text("dense_mapping/src/nodes/odometry_conditioned_da3_node.cpp")
     )
-    assert "'max_runs_per_submap', default_value='5'" in dense_launch
+    assert "'max_runs_per_submap', default_value='1'" in dense_launch
     assert "topics.local_window_poses" in dense_launch
     assert "'ros2'," in dense_launch
     assert "'bag'," in dense_launch
@@ -335,16 +528,25 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     mapper_launch = _text("dense_mapping/launch/dense_mapping.launch.py")
     assert "on_exit=EmitEvent(event=Shutdown(" in mapper_launch
 
-    visualizer = _text("dense_mapping/src/rerun_visualizer.cpp")
+    visualizer = _text("dense_mapping/src/visualization/rerun_visualizer.cpp")
     assert "set_time_timestamp_nanos_since_epoch" in visualizer
-    assert "std::chrono::system_clock" not in visualizer
+    assert "std::chrono::system_clock::now()" in visualizer
 
     vio_visualizer = _text(
         "Kimera-VIO-ROS2/kimera_vio_ros/include/kimera_vio_ros/"
         "interfaces/RerunVisualizer.h"
     )
-    assert "setTimeNSec(static_cast<size_t>(input.timestamp_))" in vio_visualizer
-    assert "std::chrono::system_clock" not in vio_visualizer
+    assert "this->setTime();" in vio_visualizer
+    assert "setTimeNSec(static_cast<size_t>(input.timestamp_))" not in vio_visualizer
+
+    aria_visualizer = _text("aria_visualization/src/visualizer_rerun.cpp")
+    assert "std::chrono::system_clock::now()" in aria_visualizer
+    assert "set_time_timestamp_nanos_since_epoch" in aria_visualizer
+
+    mesh_splat = _text(
+        "Kimera-VIO-ROS2/mesh_splat/mesh_splat/mesh_splat_node.py"
+    )
+    assert "time.time_ns()" in mesh_splat
 
     offline_launch = _text(
         "Kimera-VIO-ROS2/kimera_vio_ros/launch/"
@@ -361,6 +563,20 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "'std_srvs/srv/Trigger'" in offline_launch
     assert "'playback_delay_s', default_value='3.0'" in offline_launch
     assert "'playback_duration_s', default_value='118.0'" in offline_launch
+    assert "'max_runs_per_submap', default_value='1'" in offline_launch
+    assert "'max_runs_per_submap': LaunchConfiguration(" in offline_launch
+    assert (
+        "'geometry_filter.minimum_disparity_px', default_value='100.0'"
+        in offline_launch
+    )
+    assert (
+        "'geometry_filter.visualization_max_disparity_px',"
+        "\n            default_value='100.0'"
+        in offline_launch
+    )
+    assert "'geometry_filter.minimum_disparity_px': LaunchConfiguration(" in (
+        offline_launch
+    )
     assert "'inference_drain_delay_s', default_value='60.0'" in offline_launch
     assert "'timeout'," in offline_launch
     assert "'--signal=INT'," in offline_launch
@@ -380,7 +596,8 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "--start-paused" in offline_launch
     assert "'/rosbag2_player/resume'" in offline_launch
     assert "'rosbag2_interfaces/srv/Resume'" in offline_launch
-    assert "OnProcessExit" in offline_launch
+    assert "expected_return_codes=(0, 124)" in offline_launch
+    assert "process_exit_handler(" in offline_launch
     assert "inference_drain_delay_s" in offline_launch
     assert "input_bag_record.enabled': 'false'" in offline_launch
     assert "'submap_sparse_ba.global.enabled', default_value='true'" in (
@@ -498,24 +715,27 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "'pose_initialization_source': LaunchConfiguration(" in dense_launch
     assert "'topics.depth_refined_da3_runs'" in dense_launch
     assert "'topics.depth_refined_keyframes'" in dense_launch
-    assert "'node.name': 'depth_refined_mapper'" in dense_launch
-    assert "'node.name': 'odometry_anchored_mapper'" in dense_launch
-    assert "'node.name': 'da3_chain_mapper'" in dense_launch
-    assert "'node.name': 'no_pose_da3_mapper'" in dense_launch
-    # Every pose-conditioned mapper consumes the one pose-scale-adjusted
-    # stream; only the no-pose comparison has a native-scale stream.
+    for mapper_name in (
+        'depth_refined_mapper',
+        'odometry_anchored_mapper',
+        'da3_chain_mapper',
+    ):
+        assert mapper_name in dense_launch
+    # Every mapper consumes the one pose-scale-adjusted stream or its explicit
+    # grid-refined replay.
     assert "'topics.native_da3_runs'" not in dense_launch
     assert "'native_da3_runs'" not in dense_launch
     da3_chain_section = dense_launch.split('da3_chain_mapper =', 1)[1]
-    da3_chain_section = da3_chain_section.split('no_pose_da3_mapper =', 1)[0]
-    assert "'topics.da3_runs'" in da3_chain_section
-    assert "'da3_runs'" in da3_chain_section
+    da3_chain_section = da3_chain_section.split(
+        'refined_mapper_arguments =', 1
+    )[0]
+    assert "'da3_chain_mapper', 'da3_runs', 'da3_chain', 'da3', 'da3'" in (
+        da3_chain_section
+    )
     assert "'unconditioned_da3_runs'" not in da3_chain_section
-    assert "'topics.unconditioned_da3_runs'" in dense_launch
-    assert dense_launch.count("'unconditioned_da3_runs'") >= 2
-    assert dense_launch.count(
-        'GroupAction(actions=[IncludeLaunchDescription('
-    ) == 4
+    assert 'unconditioned_da3_runs' not in dense_launch
+    assert 'no_pose' not in dense_launch
+    assert dense_launch.count('dense_mapper_include(') == 3
     assert (
         "'comparison.da3_chain.enabled', default_value='false'"
         in dense_launch
@@ -523,40 +743,32 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "LaunchConfiguration('comparison.da3_chain.enabled')" in (
         dense_launch
     )
-    assert (
-        "'comparison.no_pose_da3.enabled', default_value='false'"
-        in dense_launch
-    )
-    assert "LaunchConfiguration('comparison.no_pose_da3.enabled')" in (
-        dense_launch
-    )
     assert "'depth_refined/da3_runs'" in dense_launch
-    assert "'depth_refined/keyframes'" in dense_launch
-    assert "'max_runs_per_submap': '5'" in dense_launch
-    assert dense_launch.count("'input_qos.depth': '1000'") == 4
-    assert dense_launch.count('on_exit=EmitEvent(event=Shutdown(') == 2
-    assert "'sparse_state_outputs.enabled': 'false'" in dense_launch
-    assert dense_launch.count("'submap.metric_scale_method': 'none'") >= 2
-    assert dense_launch.count("'submap.anchor_method': 'odometry'") >= 2
-    assert dense_launch.count("'submap.view_pose_method': 'odometry'") == 1
-    assert dense_launch.count("'submap.view_pose_method': 'da3'") == 3
-    assert dense_launch.count("'submap.overlap_scale_method': 'none'") >= 2
-    assert dense_launch.count("'geometry_filter.enabled': 'false'") >= 2
+    assert "depth_refined/keyframes" in dense_launch
+    assert "'max_runs_per_submap', default_value='1'" in dense_launch
+    assert "'max_runs_per_submap': LaunchConfiguration(" in dense_launch
+    assert "'input_qos.depth': '1000'" in dense_launch
+    assert dense_launch.count('on_exit=EmitEvent(event=Shutdown(') == 3
     assert (
-        dense_launch.count("'geometry_filter.apply_to_mapping': 'false'")
-        >= 2
+        "'sparse_state_outputs.enabled': 'true' if not output_suffix "
+        "else 'false'" in dense_launch
     )
+    assert "'submap.metric_scale_method': 'none'" in dense_launch
+    assert "'submap.anchor_method': anchor" in dense_launch
+    assert "'submap.view_pose_method': view" in dense_launch
+    assert "'submap.overlap_scale_method': 'none'" in dense_launch
+    assert "'geometry_filter.enabled': 'false'" in dense_launch
+    assert "'geometry_filter.apply_to_mapping': 'false'" in dense_launch
     for entity in (
         "'alignments',",
         "'odometry_anchored_da3',",
         "'da3_chain',",
-        "'no_pose_da3',",
         "'grid_ba',",
     ):
         assert entity in dense_launch
-    assert "'submap.anchor_method': 'da3'" in dense_launch
-    assert "da3_chain/map/points" in dense_concatenated
-    assert "no_pose_da3/map/points" in dense_concatenated
+    assert "'da3_chain_mapper', 'da3_runs', 'da3_chain', 'da3', 'da3'" in (
+        dense_launch
+    )
     assert (
         "'comparison.da3_chain.enabled', default_value='true'"
         in offline_launch
@@ -564,19 +776,14 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert "'comparison.da3_chain.enabled': LaunchConfiguration(" in (
         offline_launch
     )
-    assert (
-        "'comparison.no_pose_da3.enabled', default_value='false'"
-        in offline_launch
-    )
-    assert "'comparison.no_pose_da3.enabled': LaunchConfiguration(" in (
-        offline_launch
-    )
-    assert 'DA3-LARGE-1.1_multiview_v2_350x504_fp16.engine' in (
+    assert 'comparison.no_pose_da3' not in offline_launch
+    assert "DeclareLaunchArgument('engine_path')" in offline_launch
+    assert 'DA3-LARGE-1.1_multiview_v2_350x504_fp16.engine' not in (
         offline_launch
     )
     assert "full_union" not in dense_launch
 
-    visualizer = _text("dense_mapping/src/rerun_visualizer.cpp")
+    visualizer = _text("dense_mapping/src/visualization/rerun_visualizer.cpp")
     assert '"sparse_ba/global"' in visualizer
     assert 'prefix + "/odometry_trajectory"' in visualizer
     assert 'prefix + "/optimized_trajectory"' in visualizer

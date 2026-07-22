@@ -81,7 +81,8 @@ def _launch_setup(context, *args, **kwargs):
                 ),
                 "models.jist": LaunchConfiguration("models.jist"),
                 "models.da3": LaunchConfiguration("models.da3"),
-                "dense_mapping.enabled": "true",
+                "dense_mapping.enabled": "false",
+                "keyframe_state.publisher_enabled": "true",
                 "vocabulary_path": LaunchConfiguration("vocabulary_path"),
                 "descriptor_batch_size": LaunchConfiguration(
                     "descriptor_batch_size"

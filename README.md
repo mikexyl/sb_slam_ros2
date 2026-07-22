@@ -68,3 +68,24 @@ ros2 launch sb_slam_ros2 graco_single_robot_loop_closure.launch.py \
 The launch fails immediately when a required model, robot-name configuration,
 or ROS 2 bag is missing. Its Rerun recording name includes the launch system's
 local timestamp.
+
+## GrAco ground g1/g2/g3
+
+`graco_ground_01_02_03_multi_robot.launch.py` mirrors the ROS 1 GrAco g123
+experiment with three stereo VIO pipelines, Distributed, and Sim3 CBS. It
+defaults to `/data/graco/ground-01`, `ground-02`, and `ground-03_ros2` and
+remaps each bag to the `g1`, `g2`, and `g3` namespaces.
+The Kimera frontend and loop verification use the native TensorRT XFeat and
+LighterGlue engines from `xfeat-cpp/onnx_model`. Dense mapping, DA3, and
+dense-mapping keyframe publication are hard-disabled.
+
+```bash
+RMW_IMPLEMENTATION=rmw_zenoh_cpp ros2 launch sb_slam_ros2 \
+  graco_ground_01_02_03_multi_robot.launch.py \
+  start_zenoh_router:=true
+```
+
+Leave `start_zenoh_router:=false` when a Zenoh router is already running.
+
+Override any missing converted bag directory with, for example,
+`ground_01_bag_path:=/path/to/ground-01`.

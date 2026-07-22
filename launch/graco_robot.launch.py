@@ -139,6 +139,17 @@ def _launch_setup(context, *args, **kwargs):
             "latest_kf_frame_id": latest_kf_frame,
             "vocab_path": vocabulary,
             "lightglue_model_path": models["models.lightglue_lcd"],
+            "alpha": LaunchConfiguration("loop_closure.alpha"),
+            "sparse_bow_ids": "true",
+            "adaptive_scoring_tau_max": LaunchConfiguration(
+                "loop_closure.adaptive_scoring_tau_max"
+            ),
+            "adaptive_scoring_tau_min": LaunchConfiguration(
+                "loop_closure.adaptive_scoring_tau_min"
+            ),
+            "adaptive_scoring_lambda": LaunchConfiguration(
+                "loop_closure.adaptive_scoring_lambda"
+            ),
             "log_output_path": log_output_path,
             "rerun_application_id": rerun_application_id,
             "rerun_recording_id": rerun_recording_id,
@@ -218,7 +229,9 @@ def _launch_setup(context, *args, **kwargs):
             "frame_id.world": world_frame,
             "topic.image": image_topic,
             "topic.imu.data": imu_topic,
-            "dense_mapping.publisher_enabled": dense_mapping_enabled_text,
+            "dense_mapping.publisher_enabled": LaunchConfiguration(
+                "keyframe_state.publisher_enabled"
+            ),
             "mono_depth.enabled": dense_mapping_enabled_text,
             "mono_depth.engine_path": da3_engine,
             "mono_depth.mode": "multi_view",
@@ -310,7 +323,6 @@ def _launch_setup(context, *args, **kwargs):
                 "rerun.point_radius": LaunchConfiguration(
                     "dense_mapping.rerun_point_radius"
                 ),
-                "sparse_global_ba.enabled": "false",
             }.items(),
         )
 
@@ -361,7 +373,25 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("flush_period_s", default_value="1.0"),
             DeclareLaunchArgument(
+                "loop_closure.alpha", default_value="0.7"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.adaptive_scoring_tau_max",
+                default_value="0.7",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.adaptive_scoring_tau_min",
+                default_value="0.7",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.adaptive_scoring_lambda",
+                default_value="0.0",
+            ),
+            DeclareLaunchArgument(
                 "dense_mapping.enabled", default_value="false"
+            ),
+            DeclareLaunchArgument(
+                "keyframe_state.publisher_enabled", default_value="true"
             ),
             DeclareLaunchArgument(
                 "dense_mapping.point_stride", default_value="4"

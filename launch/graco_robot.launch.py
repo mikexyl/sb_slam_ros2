@@ -42,6 +42,18 @@ def _launch_setup(context, *args, **kwargs):
     if dense_mapping_enabled_text not in ("true", "false"):
         raise RuntimeError("dense_mapping.enabled must be true or false")
     dense_mapping_enabled = dense_mapping_enabled_text == "true"
+    vio_mode = LaunchConfiguration("vio_mode").perform(context).strip().lower()
+    if vio_mode not in ("mono", "stereo"):
+        raise RuntimeError("vio_mode must be mono or stereo")
+    if vio_mode == "stereo" and dense_mapping_enabled:
+        raise RuntimeError(
+            "dense mapping must be disabled for the stereo experiment"
+        )
+    vpr_model_type = LaunchConfiguration(
+        "vpr_model_type"
+    ).perform(context).strip().lower()
+    if vpr_model_type not in ("jist", "mixvpr"):
+        raise RuntimeError("vpr_model_type must be jist or mixvpr")
 
     names_path = Path(
         LaunchConfiguration("robot_names_file").perform(context)
@@ -71,9 +83,14 @@ def _launch_setup(context, *args, **kwargs):
             "models.xfeat_interp_nearest",
             "models.lightglue_frontend",
             "models.lightglue_lcd",
-            "models.jist",
         )
     }
+    models["models.jist"] = ""
+    models["models.mixvpr"] = ""
+    selected_vpr_argument = f"models.{vpr_model_type}"
+    models[selected_vpr_argument] = _require_file(
+        context, selected_vpr_argument
+    )
     da3_engine = ""
     if dense_mapping_enabled:
         da3_engine = _require_file(context, "models.da3")
@@ -82,6 +99,8 @@ def _launch_setup(context, *args, **kwargs):
         raise RuntimeError("vocabulary_path does not exist")
     log_output_path = LaunchConfiguration("log_output_path").perform(context)
     Path(log_output_path).mkdir(parents=True, exist_ok=True)
+    distributed_log_output_path = Path(log_output_path) / "distributed"
+    distributed_log_output_path.mkdir(parents=True, exist_ok=True)
     rerun_application_id = LaunchConfiguration(
         "rerun_application_id"
     ).perform(context)
@@ -91,10 +110,23 @@ def _launch_setup(context, *args, **kwargs):
     rerun_host = LaunchConfiguration("rerun_host").perform(context)
     if not rerun_application_id or not rerun_recording_id or not rerun_host:
         raise RuntimeError("Rerun application id, recording id, and host are required")
+    visualization_mode = LaunchConfiguration("visualization_mode").perform(
+        context
+    ).strip().lower()
+    if visualization_mode not in ("full", "minimal"):
+        raise RuntimeError("visualization_mode must be full or minimal")
+    detailed_rerun_enabled = (
+        "true" if visualization_mode == "full" else "false"
+    )
 
     image_topic = LaunchConfiguration("image_topic").perform(context)
     if not image_topic:
         image_topic = f"/{robot_name}/cam0/image_raw"
+    right_image_topic = LaunchConfiguration(
+        "right_image_topic"
+    ).perform(context)
+    if not right_image_topic:
+        right_image_topic = f"/{robot_name}/cam1/image_raw"
     imu_topic = LaunchConfiguration("imu_topic").perform(context)
     if not imu_topic:
         imu_topic = f"/{robot_name}/imu0"
@@ -132,7 +164,9 @@ def _launch_setup(context, *args, **kwargs):
             "robot_name": robot_name,
             "num_robots": str(num_robots),
             "robot_names_file": str(names_path),
-            "dataset_name": "GrAco",
+            "dataset_name": LaunchConfiguration(
+                "distributed_dataset_name"
+            ),
             "frame_id": map_frame,
             "world_frame_id": world_frame,
             "odom_frame_id": odom_frame,
@@ -140,7 +174,34 @@ def _launch_setup(context, *args, **kwargs):
             "vocab_path": vocabulary,
             "lightglue_model_path": models["models.lightglue_lcd"],
             "alpha": LaunchConfiguration("loop_closure.alpha"),
+            "bow_skip_num": LaunchConfiguration(
+                "loop_closure.bow_skip_num"
+            ),
             "sparse_bow_ids": "true",
+            "bow_batch_size": LaunchConfiguration(
+                "loop_closure.bow_batch_size"
+            ),
+            "vlc_batch_size": LaunchConfiguration(
+                "loop_closure.vlc_batch_size"
+            ),
+            "loop_batch_size": LaunchConfiguration(
+                "loop_closure.loop_batch_size"
+            ),
+            "loop_sync_sleep_time": LaunchConfiguration(
+                "loop_closure.loop_sync_sleep_time"
+            ),
+            "comm_sleep_time": LaunchConfiguration(
+                "loop_closure.comm_sleep_time"
+            ),
+            "detection_batch_size": LaunchConfiguration(
+                "loop_closure.detection_batch_size"
+            ),
+            "max_submap_size": LaunchConfiguration(
+                "loop_closure.max_submap_size"
+            ),
+            "max_submap_distance": LaunchConfiguration(
+                "loop_closure.max_submap_distance"
+            ),
             "adaptive_scoring_tau_max": LaunchConfiguration(
                 "loop_closure.adaptive_scoring_tau_max"
             ),
@@ -150,11 +211,11 @@ def _launch_setup(context, *args, **kwargs):
             "adaptive_scoring_lambda": LaunchConfiguration(
                 "loop_closure.adaptive_scoring_lambda"
             ),
-            "log_output_path": log_output_path,
+            "log_output_path": str(distributed_log_output_path),
             "rerun_application_id": rerun_application_id,
             "rerun_recording_id": rerun_recording_id,
             "rerun_host": rerun_host,
-            "rerun_enabled": "true",
+            "rerun_enabled": detailed_rerun_enabled,
         }.items(),
     )
 
@@ -174,11 +235,119 @@ def _launch_setup(context, *args, **kwargs):
             ),
             "log_dir": log_output_path,
             "online": "true",
+            "pgo_formulation": LaunchConfiguration("pgo_formulation"),
+            "sim3_scale_sigma": LaunchConfiguration("sim3_scale_sigma"),
+            "sim3_odom_scale_sigma": LaunchConfiguration(
+                "sim3_odom_scale_sigma"
+            ),
+            "sim3_loop_scale_sigma": LaunchConfiguration(
+                "sim3_loop_scale_sigma"
+            ),
+            "sim3_inter_loop_scale_sigma": LaunchConfiguration(
+                "sim3_inter_loop_scale_sigma"
+            ),
+            "belief_stage_switch_strategy": LaunchConfiguration(
+                "belief_stage_switch_strategy"
+            ),
+            "belief_stage_fixed_iterations": LaunchConfiguration(
+                "belief_stage_fixed_iterations"
+            ),
+            "belief_republish_hellinger_threshold": LaunchConfiguration(
+                "belief_republish_hellinger_threshold"
+            ),
             "rerun_application_id": rerun_application_id,
             "rerun_recording_id": rerun_recording_id,
             "rerun_host": rerun_host,
         }.items(),
     )
+
+    vio_launch_file = (
+        "kimera_vio_ros_mono.launch.py"
+        if vio_mode == "mono"
+        else "kimera_vio_ros.launch.py"
+    )
+    vio_launch_arguments = {
+        "dataset_name": LaunchConfiguration("vio_dataset_name"),
+        "robot_id": str(robot_id),
+        "robot_name": robot_name,
+        "robot_namespace": robot_name,
+        "use_lcd": "2",
+        "log_output": LaunchConfiguration("log_output"),
+        "multi_robot_bridge.enabled": "true",
+        "multi_robot_bridge.descriptor_batch_size": LaunchConfiguration(
+            "descriptor_batch_size"
+        ),
+        "multi_robot_bridge.descriptor_stride": LaunchConfiguration(
+            "descriptor_stride"
+        ),
+        "multi_robot_bridge.verification_frame_batch_size": LaunchConfiguration(
+            "verification_frame_batch_size"
+        ),
+        "multi_robot_bridge.publish_verification_frames": "true",
+        "multi_robot_bridge.flush_period_s": LaunchConfiguration(
+            "flush_period_s"
+        ),
+        "models.xfeat": models["models.xfeat"],
+        "models.xfeat_interp_bilinear": models[
+            "models.xfeat_interp_bilinear"
+        ],
+        "models.xfeat_interp_bicubic": models[
+            "models.xfeat_interp_bicubic"
+        ],
+        "models.xfeat_interp_nearest": models[
+            "models.xfeat_interp_nearest"
+        ],
+        "models.lightglue_frontend": models["models.lightglue_frontend"],
+        "models.lightglue_lcd": models["models.lightglue_lcd"],
+        "models.jist": models["models.jist"],
+        "models.mixvpr": models["models.mixvpr"],
+        "frame_id.base_link": base_frame,
+        "frame_id.odom": odom_frame,
+        "frame_id.map": map_frame,
+        "frame_id.world": world_frame,
+        "topic.imu.data": imu_topic,
+        "dense_mapping.publisher_enabled": LaunchConfiguration(
+            "keyframe_state.publisher_enabled"
+        ),
+        "mono_depth.enabled": dense_mapping_enabled_text,
+        "mono_depth.engine_path": da3_engine,
+        "mono_depth.mode": "multi_view",
+        "mono_depth.da3_keyframe_selection_method": "distance",
+        "mono_depth.min_keyframe_distance_m": "10.0",
+        "mono_depth.min_confidence": LaunchConfiguration(
+            "mono_depth.min_confidence"
+        ),
+        "mono_depth.scale_alignment_method": "landmarks",
+        "mono_depth.da3_essential_factors_enabled": "false",
+        "mono_depth.da3_baseline_ratio_factors_enabled": "false",
+        "use_sim_time": LaunchConfiguration("use_sim_time"),
+        "log_output_path": log_output_path,
+        "use_rerun_visualizer": detailed_rerun_enabled,
+        "rerun_application_id": rerun_application_id,
+        "rerun_recording_id": rerun_recording_id,
+        "rerun_host": rerun_host,
+        "start_zenoh_router": "false",
+    }
+    if vio_mode == "mono":
+        vio_launch_arguments.update(
+            {
+                "topic.image": image_topic,
+                "rosbag_play": play_bag,
+                "rosbag_publish_clock": bag_publish_clock,
+                "rosbag_path": bag_path,
+                "rosbag_rate": bag_rate,
+                "vio_start_delay": "0.0",
+                "rosbag_source_image_topic": bag_source_image_topic,
+                "rosbag_source_imu_topic": bag_source_imu_topic,
+            }
+        )
+    else:
+        vio_launch_arguments.update(
+            {
+                "topic.left.image": image_topic,
+                "topic.right.image": right_image_topic,
+            }
+        )
 
     vio_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -186,77 +355,11 @@ def _launch_setup(context, *args, **kwargs):
                 [
                     FindPackageShare("kimera_vio_ros"),
                     "launch",
-                    "kimera_vio_ros_mono.launch.py",
+                    vio_launch_file,
                 ]
             )
         ),
-        launch_arguments={
-            "dataset_name": "GrAcoMonoXfeat",
-            "robot_id": str(robot_id),
-            "robot_name": robot_name,
-            "robot_namespace": robot_name,
-            "use_lcd": "2",
-            "multi_robot_bridge.enabled": "true",
-            "multi_robot_bridge.descriptor_batch_size": LaunchConfiguration(
-                "descriptor_batch_size"
-            ),
-            "multi_robot_bridge.descriptor_stride": LaunchConfiguration(
-                "descriptor_stride"
-            ),
-            "multi_robot_bridge.verification_frame_batch_size": LaunchConfiguration(
-                "verification_frame_batch_size"
-            ),
-            "multi_robot_bridge.publish_verification_frames": "true",
-            "multi_robot_bridge.flush_period_s": LaunchConfiguration(
-                "flush_period_s"
-            ),
-            "models.xfeat": models["models.xfeat"],
-            "models.xfeat_interp_bilinear": models[
-                "models.xfeat_interp_bilinear"
-            ],
-            "models.xfeat_interp_bicubic": models[
-                "models.xfeat_interp_bicubic"
-            ],
-            "models.xfeat_interp_nearest": models[
-                "models.xfeat_interp_nearest"
-            ],
-            "models.lightglue_frontend": models["models.lightglue_frontend"],
-            "models.lightglue_lcd": models["models.lightglue_lcd"],
-            "models.jist": models["models.jist"],
-            "frame_id.base_link": base_frame,
-            "frame_id.odom": odom_frame,
-            "frame_id.map": map_frame,
-            "frame_id.world": world_frame,
-            "topic.image": image_topic,
-            "topic.imu.data": imu_topic,
-            "dense_mapping.publisher_enabled": LaunchConfiguration(
-                "keyframe_state.publisher_enabled"
-            ),
-            "mono_depth.enabled": dense_mapping_enabled_text,
-            "mono_depth.engine_path": da3_engine,
-            "mono_depth.mode": "multi_view",
-            "mono_depth.da3_keyframe_selection_method": "distance",
-            "mono_depth.min_keyframe_distance_m": "10.0",
-            "mono_depth.min_confidence": LaunchConfiguration(
-                "mono_depth.min_confidence"
-            ),
-            "mono_depth.scale_alignment_method": "landmarks",
-            "mono_depth.da3_essential_factors_enabled": "false",
-            "mono_depth.da3_baseline_ratio_factors_enabled": "false",
-            "use_sim_time": LaunchConfiguration("use_sim_time"),
-            "use_rerun_visualizer": "true",
-            "rerun_application_id": rerun_application_id,
-            "rerun_recording_id": rerun_recording_id,
-            "rerun_host": rerun_host,
-            "rosbag_play": play_bag,
-            "rosbag_publish_clock": bag_publish_clock,
-            "rosbag_path": bag_path,
-            "rosbag_rate": bag_rate,
-            "vio_start_delay": "0.0",
-            "rosbag_source_image_topic": bag_source_image_topic,
-            "rosbag_source_imu_topic": bag_source_imu_topic,
-            "start_zenoh_router": "false",
-        }.items(),
+        launch_arguments=vio_launch_arguments.items(),
     )
 
     dense_mapping_launch = None
@@ -348,6 +451,14 @@ def generate_launch_description():
             DeclareLaunchArgument("robot_name", default_value="a5"),
             DeclareLaunchArgument("num_robots", default_value="2"),
             DeclareLaunchArgument("robot_names_file", default_value=""),
+            DeclareLaunchArgument("vio_mode", default_value="mono"),
+            DeclareLaunchArgument(
+                "vio_dataset_name", default_value="GrAcoMonoXfeat"
+            ),
+            DeclareLaunchArgument(
+                "distributed_dataset_name", default_value="GrAco"
+            ),
+            DeclareLaunchArgument("vpr_model_type", default_value="jist"),
             DeclareLaunchArgument("models.xfeat", default_value=""),
             DeclareLaunchArgument(
                 "models.xfeat_interp_bilinear", default_value=""
@@ -361,10 +472,13 @@ def generate_launch_description():
             DeclareLaunchArgument("models.lightglue_frontend", default_value=""),
             DeclareLaunchArgument("models.lightglue_lcd", default_value=""),
             DeclareLaunchArgument("models.jist", default_value=""),
+            DeclareLaunchArgument("models.mixvpr", default_value=""),
             DeclareLaunchArgument("models.da3", default_value=""),
             DeclareLaunchArgument("vocabulary_path", default_value=""),
+            DeclareLaunchArgument("log_output", default_value="false"),
             DeclareLaunchArgument("world_frame", default_value="world"),
             DeclareLaunchArgument("image_topic", default_value=""),
+            DeclareLaunchArgument("right_image_topic", default_value=""),
             DeclareLaunchArgument("imu_topic", default_value=""),
             DeclareLaunchArgument("descriptor_batch_size", default_value="5"),
             DeclareLaunchArgument("descriptor_stride", default_value="1"),
@@ -374,6 +488,33 @@ def generate_launch_description():
             DeclareLaunchArgument("flush_period_s", default_value="1.0"),
             DeclareLaunchArgument(
                 "loop_closure.alpha", default_value="0.7"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.bow_skip_num", default_value="1"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.bow_batch_size", default_value="100"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.vlc_batch_size", default_value="10"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.loop_batch_size", default_value="100"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.loop_sync_sleep_time", default_value="5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.comm_sleep_time", default_value="5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.detection_batch_size", default_value="30"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.max_submap_size", default_value="100"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.max_submap_distance", default_value="0.5"
             ),
             DeclareLaunchArgument(
                 "loop_closure.adaptive_scoring_tau_max",
@@ -386,6 +527,31 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "loop_closure.adaptive_scoring_lambda",
                 default_value="0.0",
+            ),
+            DeclareLaunchArgument("sim3_scale_sigma", default_value="0.05"),
+            DeclareLaunchArgument(
+                "pgo_formulation", default_value="sim3"
+            ),
+            DeclareLaunchArgument(
+                "sim3_odom_scale_sigma", default_value="-1"
+            ),
+            DeclareLaunchArgument(
+                "sim3_loop_scale_sigma", default_value="-1"
+            ),
+            DeclareLaunchArgument(
+                "sim3_inter_loop_scale_sigma", default_value="-1"
+            ),
+            DeclareLaunchArgument(
+                "belief_stage_switch_strategy", default_value="random"
+            ),
+            DeclareLaunchArgument(
+                "belief_stage_fixed_iterations", default_value="10"
+            ),
+            DeclareLaunchArgument(
+                "belief_republish_hellinger_threshold", default_value="0.01"
+            ),
+            DeclareLaunchArgument(
+                "visualization_mode", default_value="full"
             ),
             DeclareLaunchArgument(
                 "dense_mapping.enabled", default_value="false"

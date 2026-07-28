@@ -147,7 +147,7 @@ def _cbs_node(robot, robot_id):
                 "loop_rate": 1.0,
                 "log_dir": LaunchConfiguration("cbs_log_dir"),
                 "enable_soft_reset": False,
-                "enable_dcs": True,
+                "enable_dcs": False,
                 "max_iterations": -1,
                 "online": True,
                 "pose_graph_topic": f"/{robot}/kimera_vio/pose_graph/updates",

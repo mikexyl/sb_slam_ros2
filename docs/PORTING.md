@@ -50,8 +50,8 @@ archive from the Microsoft ONNX Runtime GitHub releases into `src/` when it is
 missing, then passes that root to CMake as `onnxruntime_DIR`.
 
 `aria_viz` uses the Rerun C++ SDK. The workspace follows the existing Kimera
-ROS 2 workflow and downloads `rerun_cpp_sdk.zip` version `0.31.3` from GitHub
-into `.deps/rerun/0.31.3`, installs it locally, and passes its
+ROS 2 workflow and downloads `rerun_cpp_sdk.zip` version `0.35.0` from GitHub
+into `.deps/rerun/0.35.0`, installs it locally, and passes its
 `rerun_sdk_DIR` to CMake.
 
 The ROS 1 `xfeat-cpp` branch also expects third-party sources under

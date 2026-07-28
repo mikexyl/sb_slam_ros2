@@ -3,9 +3,10 @@
 This package is the ROS 2 workspace anchor for SB-SLAM-ROS2. It intentionally
 contains no nodes or libraries yet.
 
-The Docker image provides the ROS 2 Humble and CUDA environment. The workspace
-root Pixi project is intentionally dependency-free and is used only as a task
-runner for workspace operations.
+The desktop Docker image provides the ROS 2 Humble and CUDA environment. The
+workspace Pixi project also defines an isolated `isaac-ros-jetson` feature for
+JetPack 7.2. That environment locks Python/build tooling from conda-forge and
+PyPI while using the board's native ROS, CUDA, TensorRT, and OpenCV libraries.
 
 ## Container
 
@@ -89,3 +90,27 @@ Leave `start_zenoh_router:=false` when a Zenoh router is already running.
 
 Override any missing converted bag directory with, for example,
 `ground_01_bag_path:=/path/to/ground-01`.
+
+## Jetson Orin NX (JetPack 7.2)
+
+Deploy the workspace, then use the ARM64-only Pixi environment on the board:
+
+```bash
+src/sb_slam_ros2/scripts/jetson/deploy_workspace.bash
+ssh mikexyl@192.168.0.217
+cd ~/workspaces/isaac_ros-dev
+pixi run -e isaac-ros-jetson isaac-install-host
+pixi run -e isaac-ros-jetson isaac-bootstrap-sdks
+pixi run -e isaac-ros-jetson isaac-check
+pixi run -e isaac-ros-jetson isaac-build-engines
+pixi run -e isaac-ros-jetson isaac-build
+```
+
+`isaac-install-host` refuses to run unless the JetPack 7.2 CUDA 13.2 compiler
+and TensorRT 10.16 runtime are present. FAISS, ONNX Runtime, and Rerun are
+bootstrapped as native C++ SDKs; Pixi's PyPI dependencies remain isolated build
+tools. `cv_bridge` is built from the pinned `vision_opencv` source so installing
+ROS does not downgrade NVIDIA OpenCV 4.8.
+The full build always includes dense mapping; launch files decide whether its
+nodes and publishers are enabled. The Jetson benchmark launch explicitly
+disables the complete dense-mapping path.

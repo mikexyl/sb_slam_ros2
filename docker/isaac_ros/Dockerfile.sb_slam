@@ -1,0 +1,112 @@
+ARG BASE_IMAGE=ubuntu:24.04
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ROS_DISTRO=jazzy
+ENV CUDA_HOME=/usr/local/cuda-13.0
+ENV CUDA_PATH=/usr/local/cuda-13.0
+ENV PATH=/usr/local/cuda-13.0/bin:/usr/src/tensorrt/bin:${PATH}
+
+USER root
+
+# Keep the CUDA 13.0 and TensorRT 10.13 package pins supplied by Isaac ROS
+# 4.5. Engine plans are generated inside this image for this exact runtime.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+      cuda-compiler-13-0 \
+      cuda-libraries-dev-13-0 \
+      libnvinfer-bin \
+      libnvinfer-dev \
+      libnvinfer-plugin-dev \
+      libnvonnxparsers-dev \
+      cmake \
+      git \
+      git-lfs \
+      graphviz-dev \
+      libboost-all-dev \
+      libcurl4-openssl-dev \
+      libeigen3-dev \
+      libgflags-dev \
+      libgoogle-glog-dev \
+      libmetis-dev \
+      libopenblas-dev \
+      libopencv-contrib-dev \
+      libpcl-dev \
+      libspdlog-dev \
+      libtbb-dev \
+      libtiff-dev \
+      libyaml-cpp-dev \
+      nlohmann-json3-dev \
+      pkg-config \
+      python3-yaml \
+      unzip \
+      wget \
+      ros-jazzy-ament-cmake \
+      ros-jazzy-ament-cmake-python \
+      ros-jazzy-builtin-interfaces \
+      ros-jazzy-cv-bridge \
+      ros-jazzy-geometry-msgs \
+      ros-jazzy-image-transport \
+      ros-jazzy-interactive-markers \
+      ros-jazzy-message-filters \
+      ros-jazzy-nav-msgs \
+      ros-jazzy-pcl-conversions \
+      ros-jazzy-pcl-msgs \
+      ros-jazzy-rclcpp \
+      ros-jazzy-rclcpp-components \
+      ros-jazzy-rmw-zenoh-cpp \
+      ros-jazzy-rosbag2 \
+      ros-jazzy-rosbag2-cpp \
+      ros-jazzy-rosidl-default-generators \
+      ros-jazzy-rosidl-default-runtime \
+      ros-jazzy-sensor-msgs \
+      ros-jazzy-std-msgs \
+      ros-jazzy-std-srvs \
+      ros-jazzy-tf2 \
+      ros-jazzy-tf2-eigen \
+      ros-jazzy-tf2-geometry-msgs \
+      ros-jazzy-tf2-ros \
+      ros-jazzy-visualization-msgs \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG FAISS_VERSION=v1.14.3
+RUN git clone --branch "${FAISS_VERSION}" --depth 1 \
+      https://github.com/facebookresearch/faiss.git /tmp/faiss \
+    && cmake -S /tmp/faiss -B /tmp/faiss/build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/usr/local \
+      -DBUILD_TESTING=OFF \
+      -DFAISS_ENABLE_C_API=OFF \
+      -DFAISS_ENABLE_GPU=OFF \
+      -DFAISS_ENABLE_PYTHON=OFF \
+      -DFAISS_OPT_LEVEL=generic \
+    && cmake --build /tmp/faiss/build --parallel 4 \
+    && cmake --install /tmp/faiss/build \
+    && rm -rf /tmp/faiss
+
+ARG ONNXRUNTIME_VERSION=1.22.0
+RUN wget -q \
+      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION}.tgz" \
+      -O /tmp/onnxruntime.tgz \
+    && mkdir -p /opt/onnxruntime \
+    && tar -xzf /tmp/onnxruntime.tgz -C /opt/onnxruntime --strip-components=1 \
+    && rm /tmp/onnxruntime.tgz
+
+ARG RERUN_VERSION=0.35.0
+RUN wget -q \
+      "https://github.com/rerun-io/rerun/releases/download/${RERUN_VERSION}/rerun_cpp_sdk.zip" \
+      -O /tmp/rerun_cpp_sdk.zip \
+    && mkdir -p /tmp/rerun_cpp_sdk /opt/rerun \
+    && unzip -q /tmp/rerun_cpp_sdk.zip -d /tmp/rerun_cpp_sdk \
+    && cmake -S /tmp/rerun_cpp_sdk/rerun_cpp_sdk \
+      -B /tmp/rerun_cpp_sdk/build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+      -DCMAKE_INSTALL_PREFIX=/opt/rerun \
+    && cmake --build /tmp/rerun_cpp_sdk/build --parallel 4 \
+    && cmake --install /tmp/rerun_cpp_sdk/build \
+    && rm -rf /tmp/rerun_cpp_sdk /tmp/rerun_cpp_sdk.zip
+
+RUN nvcc --version \
+    && test -x "$(command -v trtexec)" \
+    && dpkg-query -W libnvinfer10 libnvinfer-dev

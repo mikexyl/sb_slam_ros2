@@ -175,6 +175,287 @@ def test_aerial_06_07_uses_separate_bags_without_cross_bag_clock():
     assert "TimerAction(period=1.0, actions=[vio_launch])" in profile
 
 
+def test_campus_minimal_visualization_adds_only_vio_tracking_images():
+    campus = _text("sb_slam_ros2/launch/campus_six_robot.launch.py")
+    assert '"visualization_mode",\n                default_value="minimal"' in campus
+    assert 'FindPackageShare("kimera_vio_ros")' in campus
+    assert '"param",\n                        "D455"' in campus
+    assert '"src", "Kimera-VIO", "params", "D455"' not in campus
+    assert '"tracking_image_only"' in campus
+    assert '"rerun_visualization_profile": (' in campus
+    assert '"rerun_tracking_image_jpeg_quality": LaunchConfiguration(' in (
+        campus
+    )
+    assert '"dense_mapping.publisher_enabled": "false"' in campus
+    assert '"mono_depth.enabled": "false"' in campus
+    assert '"use_external_odom": LaunchConfiguration(' in campus
+    assert '"use_external_odom",\n                default_value="true"' in campus
+    assert '"topic.external_odom": (' in campus
+    assert "JIST_r18_512_seqgem_simplified_fp32.engine" in campus
+    assert (
+        '"belief_republish_hellinger_threshold", default_value="0.01"'
+        in campus
+    )
+    assert '"pgo_formulation",\n                default_value="sim3"' in campus
+    for scale_parameter in (
+        "sim3_scale_sigma",
+        "sim3_odom_scale_sigma",
+        "sim3_loop_scale_sigma",
+        "sim3_inter_loop_scale_sigma",
+        "sim3_anchor_belief_scale_sigma",
+    ):
+        assert f'"{scale_parameter}": LaunchConfiguration(' in campus
+        assert (
+            f'"{scale_parameter}",\n                default_value="1e-6"'
+            in campus
+        )
+    assert (
+        '"pgo_formulation": LaunchConfiguration("pgo_formulation")' in campus
+    )
+    assert '"pgo_formulation": "pose3"' not in campus
+
+    for launch_name in (
+        "kimera_vio_ros.launch.py",
+        "kimera_vio_ros_mono.launch.py",
+    ):
+        launch = _text(f"Kimera-VIO-ROS2/kimera_vio_ros/launch/{launch_name}")
+        assert "'rerun_visualization_profile'" in launch
+        assert "'rerun_tracking_image_jpeg_quality'" in launch
+
+    stereo_vio = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/launch/kimera_vio_ros.launch.py"
+    )
+    assert "'--use_external_odometry='" in stereo_vio
+    assert "'use_external_odom': LaunchConfiguration(" in stereo_vio
+    assert "('external_odom', LaunchConfiguration('topic.external_odom'))" in (
+        stereo_vio
+    )
+
+    interface = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/include/"
+        "kimera_vio_ros/interfaces/RerunVisualizer.h"
+    )
+    assert "VisualizationProfile::kTrackingImageOnly" in interface
+    assert "rerun::EncodedImage::from_bytes" in interface
+
+
+def test_aerial_05_06_07_08_is_partitionable_mono_experiment():
+    launch = _module(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_multi_robot.launch.py"
+    )
+    recording_id = launch._timestamped_recording_id()
+    assert re.fullmatch(
+        r"graco_aerial_05_06_07_08_\d{8}_\d{6}_[+-]\d{4}",
+        recording_id,
+    )
+    assert launch._EXPECTED_ROBOT_NAMES == ("a5", "a6", "a7", "a8")
+    assert launch._parse_active_robot_ids("0, 2,3") == (0, 2, 3)
+    for invalid in ("", "0,", "0,0", "4", "a5"):
+        with pytest.raises(RuntimeError):
+            launch._parse_active_robot_ids(invalid)
+
+    launch_text = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_multi_robot.launch.py"
+    )
+    assert '"num_robots": "4"' in launch_text
+    assert '"active_robot_ids"' in launch_text
+    assert '"bag_rate", default_value="0.6"' in launch_text
+    assert '"bag_start_delay", default_value="20.0"' in launch_text
+    assert '"zenoh_router_startup_delay"' in launch_text
+    assert (
+        'period=LaunchConfiguration("zenoh_router_startup_delay")'
+        in launch_text
+    )
+    assert '"dense_mapping.enabled": "false"' in launch_text
+    assert '"keyframe_state.publisher_enabled": "false"' in launch_text
+    assert '"visualization_mode", default_value="minimal"' in launch_text
+    assert '"play_bag": "false"' in launch_text
+    assert '"use_sim_time": "false"' in launch_text
+    assert "_SOURCE_IMAGE_TOPIC = \"/camera_left/image_raw\"" in launch_text
+    assert "_SOURCE_IMU_TOPIC = \"/gnss/imu\"" in launch_text
+
+    robot_launch = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    assert '"kimera_vio_ros_mono.launch.py"' in robot_launch
+    assert '"pgo_formulation": "sim3"' in robot_launch
+    assert '"rerun_enabled": detailed_rerun_enabled' in robot_launch
+    assert '"use_rerun_visualizer": detailed_rerun_enabled' in robot_launch
+    assert '"belief_republish_hellinger_threshold": LaunchConfiguration(' in (
+        robot_launch
+    )
+
+
+def test_aerial_05_06_07_08_stereo_matches_ros1_experiment_profile():
+    launch_text = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_stereo_multi_robot.launch.py"
+    )
+    for expected in (
+        '"vio_mode": "stereo"',
+        '"vio_dataset_name": "GrAcoStereoXfeat"',
+        '"distributed_dataset_name": "GrAcoStereo"',
+        '"vpr_model_type": "mixvpr"',
+        '"bag_rate": "1.0"',
+        '"loop_closure.alpha": "0.5"',
+        '"loop_closure.bow_batch_size": "50"',
+        '"loop_closure.vlc_batch_size": "10"',
+        '"loop_closure.loop_batch_size": "50"',
+        '"loop_closure.loop_sync_sleep_time": "10"',
+        '"loop_closure.comm_sleep_time": "5"',
+        '"loop_closure.detection_batch_size": "50"',
+        '"loop_closure.max_submap_size": "10"',
+        '"loop_closure.max_submap_distance": "5"',
+        '"loop_closure.adaptive_scoring_tau_max": "0.01"',
+        '"loop_closure.adaptive_scoring_tau_min": "0.01"',
+        '"loop_closure.adaptive_scoring_lambda": "1.0"',
+        '"visualization_mode", default_value="minimal"',
+    ):
+        assert expected in launch_text
+
+    base = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_multi_robot.launch.py"
+    )
+    assert '_SOURCE_RIGHT_IMAGE_TOPIC = "/camera_right/image_raw"' in base
+    assert '"right_image_topic": (' in base
+    assert "required_topics.add(_SOURCE_RIGHT_IMAGE_TOPIC)" in base
+    assert '"dense_mapping.enabled": "false"' in base
+    assert '"keyframe_state.publisher_enabled": "false"' in base
+
+    robot = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    assert '"kimera_vio_ros.launch.py"' in robot
+    assert '"topic.left.image": image_topic' in robot
+    assert '"topic.right.image": right_image_topic' in robot
+    assert '"models.mixvpr": models["models.mixvpr"]' in robot
+    assert (
+        'distributed_log_output_path = Path(log_output_path) / "distributed"'
+        in robot
+    )
+    assert '"log_output_path": str(distributed_log_output_path)' in robot
+    assert '"log_output_path": log_output_path' in robot
+
+    lcd = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeat/LcdParams.yaml"
+    )
+    assert "vpr_model_type: mixvpr" in lcd
+    assert "vpr_seq_interval: 5" in lcd
+    assert "vpr_max_sequence_distance_m: 10" in lcd
+
+    distributed = _text(
+        "Kimera-Distributed/params/visual_loopclosure_GrAcoStereo.yaml"
+    )
+    assert "min_sim_vlad: 0.6" in distributed
+    assert "scoring_mode" not in distributed
+    assert "use_score_combination" not in distributed
+
+
+def test_aerial_05_06_07_08_jist_dynamic_uses_sequence_local_distance():
+    launch_text = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_aug_ds.launch.py"
+    )
+    assert '"distributed_dataset_name": "GrAcoJistDynamic"' in launch_text
+
+    distributed = _text(
+        "Kimera-Distributed/params/"
+        "visual_loopclosure_GrAcoJistDynamic.yaml"
+    )
+    assert "dist_local: 30" in distributed
+    assert "min_sim_vlad: 0.7" in distributed
+
+
+def test_aerial_05_06_07_08_cross_host_wrappers_partition_robots():
+    workstation = _text(
+        "sb_slam_ros2/scripts/run_graco_aerial_5678_workstation.bash"
+    )
+    assert "active_robot_ids:=1,2,3" in workstation
+    assert "SPLIT_RMW_IMPLEMENTATION:-rmw_fastrtps_cpp" in workstation
+    assert "fastdds_workstation_to_jetson.xml" in workstation
+    assert "ROS_LOCALHOST_ONLY=0" in workstation
+    assert "start_zenoh_router:=false" in workstation
+    assert "nvidia-cuda-mps-control" in workstation
+    assert "ZENOH_SESSION_CONFIG_URI" in workstation
+
+    jetson = _text(
+        "sb_slam_ros2/scripts/jetson/"
+        "run_graco_aerial_5678_split_profile.bash"
+    )
+    assert "active_robot_ids:=0" in jetson
+    assert "SPLIT_RMW_IMPLEMENTATION:-rmw_fastrtps_cpp" in jetson
+    assert "fastdds_jetson_to_workstation.xml" in jetson
+    assert "ROS_LOCALHOST_ONLY=0" in jetson
+    assert "start_zenoh_router:=false" in jetson
+    assert "ZENOH_SESSION_CONFIG_URI" in jetson
+    assert "ZENOH_ROUTER_CONFIG_URI" in jetson
+    assert "JIST_r18_512_seqgem_simplified_fp16.engine" in jetson
+    assert "sample_ros_processes.py" in jetson
+    assert "tegrastats --interval 1000" in jetson
+
+    workstation_zenoh = _text(
+        "sb_slam_ros2/config/rmw_zenoh_workstation_router.json5"
+    )
+    assert '"tcp/127.0.0.1:7447"' in workstation_zenoh
+    assert "enabled: false" in workstation_zenoh
+
+    jetson_session = _text(
+        "sb_slam_ros2/config/rmw_zenoh_jetson_local_session.json5"
+    )
+    assert '"tcp/127.0.0.1:7447"' in jetson_session
+
+    jetson_router = _text(
+        "sb_slam_ros2/config/"
+        "rmw_zenoh_jetson_router_to_workstation.json5"
+    )
+    assert 'mode: "router"' in jetson_router
+    assert '"tcp/192.168.0.220:7447"' in jetson_router
+
+    workstation_fastdds = _text(
+        "sb_slam_ros2/config/fastdds_workstation_to_jetson.xml"
+    )
+    assert "<address>192.168.0.220</address>" in workstation_fastdds
+    assert "<address>192.168.0.217</address>" in workstation_fastdds
+
+    jetson_fastdds = _text(
+        "sb_slam_ros2/config/fastdds_jetson_to_workstation.xml"
+    )
+    assert "<address>192.168.0.217</address>" in jetson_fastdds
+    assert "<address>192.168.0.220</address>" in jetson_fastdds
+
+
+def test_cbs_writes_component_timing_for_jetson_benchmarking():
+    node = _text("cbs_ros/src/cbs_ros_node.cpp")
+    assert '"timing_robot_"' in node
+    for field in (
+        "update_ms",
+        "stats_ms",
+        "belief_request_ms",
+        "visualization_ms",
+        "active_callback_ms",
+    ):
+        assert field in node
+    assert "elapsedMilliseconds(update_start, SteadyClock::now())" in node
+
+
+def test_jetson_benchmark_isolates_vio_and_disables_dense_mapping():
+    launch = _text(
+        "sb_slam_ros2/launch/graco_ground_01_jetson_benchmark.launch.py"
+    )
+    assert '"dataset_name": "GrAcoGndStereoXfeat"' in launch
+    assert '"use_lcd": "2"' in launch
+    assert '"multi_robot_bridge.enabled": "false"' in launch
+    assert '"log_output": "true"' in launch
+    assert '"dense_mapping.publisher_enabled": "false"' in launch
+    assert '"mono_depth.enabled": "false"' in launch
+    assert '"use_rerun_visualizer": "false"' in launch
+    assert "FindPackageShare(\"dense_mapping\")" not in launch
+    assert "FindPackageShare(\"kimera_distributed\")" not in launch
+    assert "FindPackageShare(\"cbs_ros\")" not in launch
+    assert 'default_value="20.0"' in launch
+    assert "GrAco ground-01 playback completed" in launch
+
+
 def test_aerial_05_07_records_cbs_and_global_ba_inputs():
     launch = _module(
         "sb_slam_ros2/launch/graco_aerial_05_07_multi_robot.launch.py"

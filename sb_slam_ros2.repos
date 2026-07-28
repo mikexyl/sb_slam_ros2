@@ -1,4 +1,8 @@
 repositories:
+  vision_opencv:
+    type: git
+    url: https://github.com/ros-perception/vision_opencv.git
+    version: 4.1.0
   Kimera-VIO-ROS2:
     type: git
     url: https://github.com/mikexyl/Kimera-VIO-ROS2.git

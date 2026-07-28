@@ -1,0 +1,9 @@
+version: 2
+
+docker:
+  image:
+    additional_image_keys:
+      - sb_slam
+  run:
+    container_name: sb_slam_ros2_isaac_ros
+    workdir: /workspaces/isaac_ros-dev

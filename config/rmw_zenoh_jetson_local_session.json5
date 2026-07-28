@@ -1,0 +1,15 @@
+{
+  // Jetson ROS sessions use only the Jetson-local rmw_zenohd router.
+  mode: "peer",
+  connect: {
+    endpoints: ["tcp/127.0.0.1:7447"],
+  },
+  listen: {
+    endpoints: ["tcp/localhost:0"],
+  },
+  scouting: {
+    multicast: {
+      enabled: false,
+    },
+  },
+}

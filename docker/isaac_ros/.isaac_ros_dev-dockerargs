@@ -1,0 +1,2 @@
+-v /home/mikexyl/xfeat-trt-benchmark/artifacts/xfeat-lightglue:/models/xfeat-lightglue-source:ro
+-v /home/mikexyl/data/graco:/data/graco:ro

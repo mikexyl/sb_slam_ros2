@@ -1,0 +1,19 @@
+{
+  // One router runs on each machine. The Jetson router initiates the
+  // inter-router TCP link to the workstation router over USB-C.
+  mode: "router",
+  connect: {
+    endpoints: ["tcp/192.168.0.220:7447"],
+  },
+  listen: {
+    endpoints: ["tcp/[::]:7447"],
+  },
+  scouting: {
+    multicast: {
+      enabled: false,
+    },
+    gossip: {
+      enabled: true,
+    },
+  },
+}

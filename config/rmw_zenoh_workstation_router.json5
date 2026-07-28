@@ -1,0 +1,16 @@
+{
+  // Every workstation ROS process explicitly peers with the one local router.
+  // The router itself is started separately by the experiment launch.
+  mode: "peer",
+  connect: {
+    endpoints: ["tcp/127.0.0.1:7447"],
+  },
+  listen: {
+    endpoints: ["tcp/localhost:0"],
+  },
+  scouting: {
+    multicast: {
+      enabled: false,
+    },
+  },
+}

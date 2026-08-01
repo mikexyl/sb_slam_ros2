@@ -372,9 +372,16 @@ def _launch_setup(context, *args, **kwargs):
                     "sim3_inter_loop_scale_sigma": LaunchConfiguration(
                         "sim3_inter_loop_scale_sigma"
                     ),
-                    "sim3_anchor_belief_scale_sigma": LaunchConfiguration(
-                        "sim3_anchor_belief_scale_sigma"
+                    "sim3_inter_loop_has_scale_measurement": LaunchConfiguration(
+                        "sim3_inter_loop_has_scale_measurement"
                     ),
+                    "sim3_pose_scale_prior_sigma": LaunchConfiguration(
+                        "sim3_pose_scale_prior_sigma"
+                    ),
+                    "sim3_anchor_scale_prior_sigma": LaunchConfiguration(
+                        "sim3_anchor_scale_prior_sigma"
+                    ),
+                    "communication_topology_mode": "dynamic_factors",
                     "belief_stage_switch_strategy": LaunchConfiguration(
                         "belief_stage_switch_strategy"
                     ),
@@ -686,12 +693,22 @@ def generate_launch_description():
                 description="Near-fixed inter-robot loop scale.",
             ),
             DeclareLaunchArgument(
-                "sim3_anchor_belief_scale_sigma",
-                default_value="1e-6",
+                "sim3_inter_loop_has_scale_measurement",
+                default_value="false",
                 description=(
-                    "Keep communicated Sim3 anchor beliefs effectively at "
-                    "unit scale."
+                    "Whether inter-robot measurements explicitly observe "
+                    "relative scale. Campus loop measurements do not."
                 ),
+            ),
+            DeclareLaunchArgument(
+                "sim3_pose_scale_prior_sigma",
+                default_value="-1",
+                description="Negative disables absolute local-pose scale priors.",
+            ),
+            DeclareLaunchArgument(
+                "sim3_anchor_scale_prior_sigma",
+                default_value="-1",
+                description="Negative disables absolute robot-anchor scale priors.",
             ),
             DeclareLaunchArgument(
                 "log_output_path",

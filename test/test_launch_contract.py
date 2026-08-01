@@ -202,13 +202,21 @@ def test_campus_minimal_visualization_adds_only_vio_tracking_images():
         "sim3_odom_scale_sigma",
         "sim3_loop_scale_sigma",
         "sim3_inter_loop_scale_sigma",
-        "sim3_anchor_belief_scale_sigma",
     ):
         assert f'"{scale_parameter}": LaunchConfiguration(' in campus
         assert (
             f'"{scale_parameter}",\n                default_value="1e-6"'
             in campus
         )
+    for prior_parameter in (
+        "sim3_pose_scale_prior_sigma",
+        "sim3_anchor_scale_prior_sigma",
+    ):
+        assert f'"{prior_parameter}": LaunchConfiguration(' in campus
+        assert f'"{prior_parameter}",\n                default_value="-1"' in campus
+    assert '"sim3_inter_loop_has_scale_measurement"' in campus
+    assert 'default_value="false"' in campus
+    assert "sim3_anchor_belief_scale_sigma" not in campus
     assert (
         '"pgo_formulation": LaunchConfiguration("pgo_formulation")' in campus
     )

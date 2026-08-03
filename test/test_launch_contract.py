@@ -1621,6 +1621,10 @@ def test_ground_sequence_diversity_ablation_contract():
         "Kimera-VIO-ROS2/kimera_vio_ros/param/"
         "GrAcoGndMonoXfeatJistDsNoAugLgBoundary005/LcdParams.yaml"
     )
+    mono_lg_boundary005_backend = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoGndMonoXfeatJistDsNoAugLgBoundary005/BackendParams.yaml"
+    )
     mono_lg_boundary005_frontend = _text(
         "Kimera-VIO-ROS2/kimera_vio_ros/param/"
         "GrAcoGndMonoXfeatJistDsNoAugLgBoundary005/FrontendParams.yaml"
@@ -1655,6 +1659,7 @@ def test_ground_sequence_diversity_ablation_contract():
     assert '"stereo_depth.method": ""' in mono_lg_boundary005_launch
     assert "GrAcoGndMonoXfeatJistDsNoAugLgBoundary005" in mono_lg_boundary005_launch
     assert "max_covisibility_score: 0.05" in mono_lg_boundary005_lcd
+    assert "nr_states: 100" in mono_lg_boundary005_backend
     assert "desc_tracking_mode: 2" in mono_lg_boundary005_frontend
     assert "publish_only_sequence: true" in mono_lg_boundary005_frontend
     assert "frontend_type: 0" in mono_lg_boundary005_pipeline

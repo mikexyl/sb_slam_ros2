@@ -16,13 +16,13 @@ def generate_launch_description():
     workspace_root = Path(os.environ.get("SB_SLAM_ROS2_WS", os.getcwd()))
     run_name = (
         "jist-ds-noaug-lg-mono-boundary0.05-consecutive-disabled-"
-        "jist0.8-seqdiv-off-distlocal30-sim3-framerefine-argmax-"
+        "jist0.8-seqdiv-off-distlocal30-sim3-framerefine-argmax-smoother100-"
         f"{timestamp}"
     )
     output_path = workspace_root / "src" / "code-logs" / "g123456" / run_name
     recording_id = (
         "graco_g123456_jist08_ds_noaug_lg_mono_boundary005_"
-        "seqdiv_off_framerefine_"
+        "seqdiv_off_framerefine_smoother100_"
         f"{timestamp}"
     )
     return LaunchDescription(
@@ -53,7 +53,7 @@ def generate_launch_description():
                     "log_output_path": str(output_path),
                     "rerun_application_id": (
                         "graco_g123456_jist08_ds_noaug_lg_mono_boundary005_"
-                        "seqdiv_off_framerefine"
+                        "seqdiv_off_framerefine_smoother100"
                     ),
                     "rerun_recording_id": recording_id,
                     "rerun_host": "rerun+http://127.0.0.1:9876/proxy",

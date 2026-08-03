@@ -27,6 +27,7 @@
   <exec_depend>aria_common</exec_depend>
   <exec_depend>aria_viz</exec_depend>
   <exec_depend>dbow2</exec_depend>
+  <exec_depend>teaserpp</exec_depend>
   <exec_depend>xfeat-cpp</exec_depend>
   <exec_depend>vilib</exec_depend>
   <exec_depend>launch</exec_depend>

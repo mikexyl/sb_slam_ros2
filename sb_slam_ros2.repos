@@ -1,4 +1,8 @@
 repositories:
+  TEASER-plusplus:
+    type: git
+    url: https://github.com/MIT-SPARK/TEASER-plusplus.git
+    version: master
   vision_opencv:
     type: git
     url: https://github.com/ros-perception/vision_opencv.git

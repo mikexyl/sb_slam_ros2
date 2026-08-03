@@ -133,6 +133,10 @@ ported_package_paths() {
 
 common_cmake_args=(
   -DBUILD_TESTING=OFF
+  -DBUILD_PYTHON_BINDINGS=OFF
+  -DBUILD_MATLAB_BINDINGS=OFF
+  -DBUILD_TEASER_FPFH=OFF
+  -DBUILD_DOC=OFF
   -DKIMERA_BUILD_EXAMPLES=OFF
   -DKIMERA_BUILD_TESTS=OFF
   -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF
@@ -200,6 +204,10 @@ case "${1:-}" in
     run_build sb_slam_ros2
     ;;
 
+  build-teaserpp)
+    run_build teaserpp
+    ;;
+
   build-kimera-vio)
     run_build kimera_vio
     ;;
@@ -248,7 +256,7 @@ EOF
     ;;
 
   *)
-    echo "Usage: $0 {import|rosdep|build|build-kimera-vio|build-kimera-vio-ros|test|shell-env}" >&2
+    echo "Usage: $0 {import|rosdep|build|build-teaserpp|build-kimera-vio|build-kimera-vio-ros|test|shell-env}" >&2
     exit 2
     ;;
 esac

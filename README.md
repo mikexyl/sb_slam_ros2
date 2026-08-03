@@ -35,6 +35,7 @@ cd ../..
 pixi run import
 pixi run rosdep
 pixi run build
+pixi run build-teaserpp
 pixi run build-kimera-vio
 pixi run test
 pixi run shell-env

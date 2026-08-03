@@ -1586,6 +1586,15 @@ def test_ground_sequence_diversity_ablation_contract():
         "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg_"
         "ffs_seqdiv_off_framerefine.launch.py"
     )
+    boundary005_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg_ffs_"
+        "boundary005_seqdiv_off_framerefine.launch.py"
+    )
+    boundary005_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoGndStereoXfeatJistDsNoAugNoLgBoundary005/LcdParams.yaml"
+    )
 
     assert '"loop_closure.min_sim_score", -1.0' in base_interface
     for launch_text in (vio_launch, robot_launch, multi_launch, jist_launch):
@@ -1594,3 +1603,7 @@ def test_ground_sequence_diversity_ablation_contract():
     assert '"jist_frame_refinement": "true"' in ablation_launch
     assert '"stereo_depth.method": "FastFoundationStereo"' in ablation_launch
     assert "seqdiv-off" in ablation_launch
+    assert '"jist_frame_refinement": "true"' in boundary005_launch
+    assert '"loop_closure.min_sim_score": "0.0"' in boundary005_launch
+    assert "GrAcoGndStereoXfeatJistDsNoAugNoLgBoundary005" in boundary005_launch
+    assert "max_covisibility_score: 0.05" in boundary005_params

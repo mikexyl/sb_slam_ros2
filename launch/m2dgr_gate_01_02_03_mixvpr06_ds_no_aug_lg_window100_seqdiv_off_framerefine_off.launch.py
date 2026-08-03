@@ -69,7 +69,7 @@ def generate_launch_description():
             ),
             "bag_start_delay": LaunchConfiguration("bag_start_delay"),
             "vio_mode": "mono",
-            "vio_dataset_name": "M2DGRRSXfeatJistDsNoAugLgWindow100",
+            "vio_dataset_name": "M2DGRRSXfeatMixVprDsNoAugLgWindow100",
             "distributed_dataset_name": "M2DGR",
             "vpr_model_type": "mixvpr",
             "jist_frame_refinement": "false",

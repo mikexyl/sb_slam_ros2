@@ -1769,6 +1769,13 @@ def test_m2dgr_gate_123_mixvpr06_window100_contract():
         "m2dgr_gate_01_02_03_mixvpr06_ds_no_aug_lg_window100_"
         "seqdiv_off_framerefine_off.launch.py"
     )
+    profile_root = (
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "M2DGRRSXfeatMixVprDsNoAugLgWindow100/"
+    )
+    backend = _text(profile_root + "BackendParams.yaml")
+    frontend = _text(profile_root + "FrontendParams.yaml")
+    lcd = _text(profile_root + "LcdParams.yaml")
 
     assert '"vio_mode": "mono"' in experiment_launch
     assert '"vpr_model_type": "mixvpr"' in experiment_launch
@@ -1776,7 +1783,7 @@ def test_m2dgr_gate_123_mixvpr06_window100_contract():
     assert '"loop_closure.min_sim_vlad": "0.6"' in experiment_launch
     assert '"loop_closure.min_sim_score": "0.0"' in experiment_launch
     assert '"stereo_depth.method": ""' in experiment_launch
-    assert "M2DGRRSXfeatJistDsNoAugLgWindow100" in experiment_launch
+    assert "M2DGRRSXfeatMixVprDsNoAugLgWindow100" in experiment_launch
     assert "mixvpr_resnet50_512d_fp16.engine" in experiment_launch
     assert "mixvpr0.6-512d-ds-noaug-lg-rematch-window100" in (
         experiment_launch
@@ -1786,3 +1793,10 @@ def test_m2dgr_gate_123_mixvpr06_window100_contract():
     )
     assert "distlocal90-sim3-" in experiment_launch
     assert '"framerefine-off-"' in experiment_launch
+    assert "nr_states: 100" in backend
+    assert "desc_tracking_mode: 2" in frontend
+    assert "feature_tracker_type: 1" in frontend
+    assert "rematch_threshold: 0.5" in frontend
+    assert "max_covisibility_score: 0.1" in lcd
+    assert "vpr_model_type: mixvpr" in lcd
+    assert 'vpr_model_path: ""' in lcd

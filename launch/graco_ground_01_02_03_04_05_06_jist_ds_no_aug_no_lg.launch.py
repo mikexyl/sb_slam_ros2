@@ -57,7 +57,7 @@ def generate_launch_description():
                 "bag_playback_duration"
             ),
             "bag_start_delay": LaunchConfiguration("bag_start_delay"),
-            "vio_mode": "stereo",
+            "vio_mode": LaunchConfiguration("vio_mode"),
             "vio_dataset_name": LaunchConfiguration("vio_dataset_name"),
             "distributed_dataset_name": LaunchConfiguration(
                 "distributed_dataset_name"
@@ -165,6 +165,7 @@ def generate_launch_description():
                 default_value="/data3/graco/ground-06_full_ros2",
             ),
             DeclareLaunchArgument("play_bags", default_value="true"),
+            DeclareLaunchArgument("vio_mode", default_value="stereo"),
             DeclareLaunchArgument("bag_rate", default_value="1.0"),
             DeclareLaunchArgument(
                 "bag_playback_duration", default_value="-1"

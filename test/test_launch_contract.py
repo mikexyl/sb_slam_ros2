@@ -1595,6 +1595,23 @@ def test_ground_sequence_diversity_ablation_contract():
         "Kimera-VIO-ROS2/kimera_vio_ros/param/"
         "GrAcoGndStereoXfeatJistDsNoAugNoLgBoundary005/LcdParams.yaml"
     )
+    mono_boundary005_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg_mono_"
+        "boundary005_seqdiv_off_framerefine.launch.py"
+    )
+    mono_boundary005_lcd = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoGndMonoXfeatJistDsNoAugNoLgBoundary005/LcdParams.yaml"
+    )
+    mono_boundary005_frontend = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoGndMonoXfeatJistDsNoAugNoLgBoundary005/FrontendParams.yaml"
+    )
+    mono_boundary005_pipeline = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoGndMonoXfeatJistDsNoAugNoLgBoundary005/PipelineParams.yaml"
+    )
 
     assert '"loop_closure.min_sim_score", -1.0' in base_interface
     for launch_text in (vio_launch, robot_launch, multi_launch, jist_launch):
@@ -1607,3 +1624,12 @@ def test_ground_sequence_diversity_ablation_contract():
     assert '"loop_closure.min_sim_score": "0.0"' in boundary005_launch
     assert "GrAcoGndStereoXfeatJistDsNoAugNoLgBoundary005" in boundary005_launch
     assert "max_covisibility_score: 0.05" in boundary005_params
+    assert '"vio_mode": LaunchConfiguration("vio_mode")' in jist_launch
+    assert '"vio_mode": "mono"' in mono_boundary005_launch
+    assert '"jist_frame_refinement": "true"' in mono_boundary005_launch
+    assert '"stereo_depth.method": ""' in mono_boundary005_launch
+    assert "GrAcoGndMonoXfeatJistDsNoAugNoLgBoundary005" in mono_boundary005_launch
+    assert "max_covisibility_score: 0.05" in mono_boundary005_lcd
+    assert "desc_tracking_mode: 0" in mono_boundary005_frontend
+    assert "publish_only_sequence: true" in mono_boundary005_frontend
+    assert "frontend_type: 0" in mono_boundary005_pipeline

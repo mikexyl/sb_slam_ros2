@@ -23,13 +23,12 @@ def _default_jist_model_path():
     workspace_root = Path(os.environ.get("SB_SLAM_ROS2_WS", os.getcwd()))
     model_root = workspace_root / "src" / "xfeat-cpp" / "onnx_model"
     for filename in (
-        "JIST_r18_512_seqgem_simplified_fp32.engine",
-        "JIST_r18_512_seqgem_simplified_fp16.engine",
+        "JIST_r18_512_seqgem_frames_fp32.engine",
     ):
         model_path = model_root / filename
         if model_path.is_file():
             return str(model_path)
-    return str(model_root / "JIST_r18_512_seqgem_simplified_fp32.engine")
+    return str(model_root / "JIST_r18_512_seqgem_frames_fp32.engine")
 
 
 def _run_identity(similarity_threshold):
@@ -94,6 +93,7 @@ def _launch_setup(context):
             "vio_dataset_name": "GrAcoStereoXfeatJistDsNoAug",
             "distributed_dataset_name": "GrAcoJistDynamic",
             "vpr_model_type": "jist",
+            "jist_frame_refinement": "false",
             "models.jist": _default_jist_model_path(),
             "loop_closure.min_sim_vlad": similarity_threshold,
             "bag_rate": "1.0",

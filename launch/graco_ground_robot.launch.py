@@ -118,6 +118,9 @@ def _launch_setup(context, *args, **kwargs):
             "lightglue_model_path": models["models.lightglue_lcd"],
             "alpha": LaunchConfiguration("loop_closure.alpha"),
             "sparse_bow_ids": "true",
+            "jist_frame_refinement": LaunchConfiguration(
+                "jist_frame_refinement"
+            ),
             "adaptive_scoring_tau_max": LaunchConfiguration(
                 "loop_closure.adaptive_scoring_tau_max"
             ),
@@ -212,6 +215,9 @@ def _launch_setup(context, *args, **kwargs):
             "models.lightglue_frontend": models["models.lightglue_frontend"],
             "models.lightglue_lcd": models["models.lightglue_lcd"],
             "models.jist": models["models.jist"],
+            "jist_frame_refinement": LaunchConfiguration(
+                "jist_frame_refinement"
+            ),
             "frame_id.base_link": base_frame,
             "frame_id.odom": odom_frame,
             "frame_id.map": map_frame,
@@ -253,6 +259,9 @@ def generate_launch_description():
             DeclareLaunchArgument("models.lightglue_frontend", default_value=""),
             DeclareLaunchArgument("models.lightglue_lcd", default_value=""),
             DeclareLaunchArgument("models.jist", default_value=""),
+            DeclareLaunchArgument(
+                "jist_frame_refinement", default_value="false"
+            ),
             DeclareLaunchArgument("vocabulary_path", default_value=""),
             DeclareLaunchArgument("world_frame", default_value="world"),
             DeclareLaunchArgument(

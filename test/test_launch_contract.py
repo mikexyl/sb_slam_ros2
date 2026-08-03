@@ -267,7 +267,7 @@ def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
         ),
         '"vpr_model_type": LaunchConfiguration("vpr_model_type")',
         '"use_external_odom": "false"',
-        "JIST_r18_512_seqgem_simplified_fp16.engine",
+        "JIST_r18_512_seqgem_frames_fp32.engine",
         "mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine",
         '"loop_closure.max_submap_size": "10"',
         '"loop_closure.max_submap_distance": "5"',
@@ -321,7 +321,6 @@ def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
     assert "min_sim_score: -1.0" in fixed_noaug
     assert "max_consecutive_frame_covisibility_score: 1.0" in fixed_noaug
     assert "use_covis_projection: 0" in fixed_noaug
-
     ablation = _text(
         "sb_slam_ros2/launch/"
         "graco_aerial_05_06_07_08_jist_aug_fixed5.launch.py"
@@ -1465,3 +1464,70 @@ def test_odometry_conditioned_da3_is_an_isolated_vio_only_experiment():
     assert '"sparse_ba/global"' in visualizer
     assert 'prefix + "/odometry_trajectory"' in visualizer
     assert 'prefix + "/optimized_trajectory"' in visualizer
+
+
+def test_aerial_5678_vpr_ablation_refinement_contract():
+    mixvpr_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_mixvpr_512d_sharedseq5.launch.py"
+    )
+    endpoint_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_ds_no_aug_no_lg.launch.py"
+    )
+    refined_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_ds_no_aug_no_lg_framerefine.launch.py"
+    )
+
+    assert '"jist_frame_refinement": "false"' in mixvpr_launch
+    assert '"jist_frame_refinement": "false"' in endpoint_launch
+    assert '"jist_frame_refinement": "true"' in refined_launch
+    for launch_text in (endpoint_launch, refined_launch):
+        assert "JIST_r18_512_seqgem_frames_fp32.engine" in launch_text
+        assert '"loop_closure.min_sim_vlad": "0.7"' in launch_text
+        assert '"bag_rate": "1.0"' in launch_text
+
+    sequence_keys = (
+        "vpr_seq_interval",
+        "vpr_min_sequence_frames",
+        "vpr_max_sequence_distance_m",
+        "vpr_short_sequence_policy",
+        "max_covisibility_score",
+        "min_sim_score",
+        "min_keyframe_diversity_score",
+        "max_consecutive_frame_covisibility_score",
+        "publish_only_sequence",
+        "use_covis_projection",
+    )
+
+    def sequence_contract(profile):
+        values = {}
+        for line in profile.splitlines():
+            stripped = line.strip()
+            for key in sequence_keys:
+                if stripped.startswith(f"{key}:"):
+                    values[key] = stripped.split(":", 1)[1].strip()
+        return values
+
+    mixvpr_profile = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprDsNoAugSharedSeq5/LcdParams.yaml"
+    )
+    jist_profile = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatJistDsNoAugNoLg/LcdParams.yaml"
+    )
+    assert sequence_contract(mixvpr_profile) == sequence_contract(jist_profile)
+
+    robot_launch = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    distributed_launch = _text(
+        "Kimera-Distributed/launch/"
+        "kimera_distributed_loop_closure_ros.launch.py"
+    )
+    vio_launch = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/launch/kimera_vio_ros.launch.py"
+    )
+    assert robot_launch.count("jist_frame_refinement") >= 4
+    assert distributed_launch.count("jist_frame_refinement") >= 2
+    assert vio_launch.count("jist_frame_refinement") >= 2

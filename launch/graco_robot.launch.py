@@ -54,6 +54,13 @@ def _launch_setup(context, *args, **kwargs):
     ).perform(context).strip().lower()
     if vpr_model_type not in ("jist", "mixvpr"):
         raise RuntimeError("vpr_model_type must be jist or mixvpr")
+    jist_frame_refinement = LaunchConfiguration(
+        "jist_frame_refinement"
+    ).perform(context).strip().lower()
+    if jist_frame_refinement not in ("true", "false"):
+        raise RuntimeError("jist_frame_refinement must be true or false")
+    if jist_frame_refinement == "true" and vpr_model_type != "jist":
+        raise RuntimeError("jist_frame_refinement requires vpr_model_type:=jist")
     stereo_depth_method = LaunchConfiguration(
         "stereo_depth.method"
     ).perform(context).strip()
@@ -202,6 +209,9 @@ def _launch_setup(context, *args, **kwargs):
                 "loop_closure.bow_skip_num"
             ),
             "sparse_bow_ids": "true",
+            "jist_frame_refinement": LaunchConfiguration(
+                "jist_frame_refinement"
+            ),
             "bow_batch_size": LaunchConfiguration(
                 "loop_closure.bow_batch_size"
             ),
@@ -316,6 +326,9 @@ def _launch_setup(context, *args, **kwargs):
         "models.lightglue_lcd": models["models.lightglue_lcd"],
         "models.jist": models["models.jist"],
         "models.mixvpr": models["models.mixvpr"],
+        "jist_frame_refinement": LaunchConfiguration(
+            "jist_frame_refinement"
+        ),
         "stereo_depth.method": stereo_depth_method,
         "models.stereo_depth": stereo_depth_engine,
         "frame_id.base_link": base_frame,
@@ -480,6 +493,9 @@ def generate_launch_description():
                 "distributed_dataset_name", default_value="GrAco"
             ),
             DeclareLaunchArgument("vpr_model_type", default_value="jist"),
+            DeclareLaunchArgument(
+                "jist_frame_refinement", default_value="false"
+            ),
             DeclareLaunchArgument("models.xfeat", default_value=""),
             DeclareLaunchArgument("models.lightglue_frontend", default_value=""),
             DeclareLaunchArgument("models.lightglue_lcd", default_value=""),

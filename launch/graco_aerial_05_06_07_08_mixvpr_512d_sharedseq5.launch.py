@@ -97,6 +97,7 @@ def _launch_setup(context):
             "vio_dataset_name": "GrAcoStereoXfeatMixVprDsNoAugSharedSeq5",
             "distributed_dataset_name": "GrAcoMixVprDynamic",
             "vpr_model_type": "mixvpr",
+            "jist_frame_refinement": "false",
             "models.mixvpr": _default_mixvpr_model_path(),
             "loop_closure.min_sim_vlad": similarity_threshold,
             "bag_rate": "1.0",

@@ -1,4 +1,4 @@
-"""Run A5678 with JIST 0.7, dynamic sequences, no augmentation/LightGlue."""
+"""Run the A5678 JIST frame-argmax ablation with the endpoint setup."""
 
 from datetime import datetime
 import os
@@ -17,14 +17,13 @@ def _default_bag_path(remote_path, local_path):
 
 def _default_jist_model_path():
     workspace_root = Path(os.environ.get("SB_SLAM_ROS2_WS", os.getcwd()))
-    model_root = workspace_root / "src" / "xfeat-cpp" / "onnx_model"
-    for filename in (
-        "JIST_r18_512_seqgem_frames_fp32.engine",
-    ):
-        model_path = model_root / filename
-        if model_path.is_file():
-            return str(model_path)
-    return str(model_root / "JIST_r18_512_seqgem_frames_fp32.engine")
+    return str(
+        workspace_root
+        / "src"
+        / "xfeat-cpp"
+        / "onnx_model"
+        / "JIST_r18_512_seqgem_frames_fp32.engine"
+    )
 
 
 def _run_identity():
@@ -32,11 +31,11 @@ def _run_identity():
     workspace_root = Path(os.environ.get("SB_SLAM_ROS2_WS", os.getcwd()))
     run_name = (
         "jist-ds-noaug-nolg-boundary0.1-consecutive-disabled-"
-        f"jist0.7-minsim0.85-distlocal30-sim3-framerefine-off-{timestamp}"
+        f"jist0.7-minsim0.85-distlocal30-sim3-framerefine-argmax-{timestamp}"
     )
     output_path = workspace_root / "src" / "code-logs" / "a5678" / run_name
     recording_id = (
-        f"graco_a5678_jist07_ds_noaug_nolg_framerefine_off_{timestamp}"
+        f"graco_a5678_jist07_ds_noaug_nolg_framerefine_argmax_{timestamp}"
     )
     return str(output_path), recording_id
 
@@ -73,14 +72,16 @@ def generate_launch_description():
             "vio_dataset_name": "GrAcoStereoXfeatJistDsNoAugNoLg",
             "distributed_dataset_name": "GrAcoJistDynamic",
             "vpr_model_type": "jist",
-            "jist_frame_refinement": "false",
+            "jist_frame_refinement": "true",
             "models.jist": _default_jist_model_path(),
             "loop_closure.min_sim_vlad": "0.7",
             "bag_rate": "1.0",
             "visualization_mode": "minimal",
             "log_output": "true",
             "log_output_path": output_path,
-            "rerun_application_id": "graco_a5678_jist07_ds_noaug_nolg",
+            "rerun_application_id": (
+                "graco_a5678_jist07_ds_noaug_nolg_framerefine_argmax"
+            ),
             "rerun_recording_id": recording_id,
             "rerun_host": "rerun+http://192.168.0.206:9876/proxy",
             "start_zenoh_router": "false",

@@ -61,6 +61,9 @@ def generate_launch_description():
                 "distributed_dataset_name"
             ),
             "vpr_model_type": LaunchConfiguration("vpr_model_type"),
+            "jist_frame_refinement": LaunchConfiguration(
+                "jist_frame_refinement"
+            ),
             "use_external_odom": "false",
             "models.xfeat": LaunchConfiguration("models.xfeat"),
             "models.lightglue_frontend": LaunchConfiguration(
@@ -182,6 +185,9 @@ def generate_launch_description():
                 ),
             ),
             DeclareLaunchArgument(
+                "jist_frame_refinement", default_value="false"
+            ),
+            DeclareLaunchArgument(
                 "models.xfeat",
                 default_value=_default_model_path(
                     "xfeat_320x224_fp16.engine"
@@ -202,7 +208,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "models.jist",
                 default_value=_default_model_path(
-                    "JIST_r18_512_seqgem_simplified_fp16.engine"
+                    "JIST_r18_512_seqgem_frames_fp32.engine"
                 ),
             ),
             DeclareLaunchArgument(

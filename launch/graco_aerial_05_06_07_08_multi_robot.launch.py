@@ -199,6 +199,7 @@ def _launch_setup(context, *args, **kwargs):
         "vio_dataset_name",
         "distributed_dataset_name",
         "vpr_model_type",
+        "jist_frame_refinement",
         "use_external_odom",
         "play_bags",
         "bag_rate",
@@ -271,6 +272,9 @@ def _launch_setup(context, *args, **kwargs):
             "distributed_dataset_name"
         ),
         "vpr_model_type": LaunchConfiguration("vpr_model_type"),
+        "jist_frame_refinement": LaunchConfiguration(
+            "jist_frame_refinement"
+        ),
         "use_external_odom": LaunchConfiguration("use_external_odom"),
         "models.xfeat": LaunchConfiguration("models.xfeat"),
         "models.lightglue_frontend": LaunchConfiguration(
@@ -446,6 +450,9 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("vpr_model_type", default_value="jist"),
             DeclareLaunchArgument(
+                "jist_frame_refinement", default_value="false"
+            ),
+            DeclareLaunchArgument(
                 "use_external_odom", default_value="false"
             ),
             DeclareLaunchArgument(
@@ -493,7 +500,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "models.jist",
                 default_value=_default_model_path(
-                    "JIST_r18_512_seqgem_simplified_fp32.engine"
+                    "JIST_r18_512_seqgem_frames_fp32.engine"
                 ),
             ),
             DeclareLaunchArgument(

@@ -91,6 +91,73 @@ def test_graco_profile_enables_bridge_only_in_multi_robot_profile():
     assert '"models.netvlad"' not in profile
 
 
+def test_runtime_is_tensorrt_only_and_mixvpr_defaults_to_512d():
+    detector_header = _text(
+        "Kimera-VIO/include/kimera-vio/loopclosure/"
+        "VLADLoopClosureDetector.h"
+    )
+    detector_source = _text(
+        "Kimera-VIO/src/loopclosure/VLADLoopClosureDetector.cpp"
+    )
+    params_source = _text(
+        "Kimera-VIO/src/loopclosure/LoopClosureDetectorParams.cpp"
+    )
+    ros_interface = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/src/interfaces/base_interface.cpp"
+    )
+    pipeline_header = _text("Kimera-VIO/include/kimera-vio/pipeline/Pipeline.h")
+    pipeline_source = _text("Kimera-VIO/src/pipeline/Pipeline.cpp")
+    stereo_matcher = _text("Kimera-VIO/src/frontend/StereoMatcher.cpp")
+
+    runtime_text = "\n".join(
+        (
+            detector_header,
+            detector_source,
+            params_source,
+            ros_interface,
+            pipeline_header,
+            pipeline_source,
+            stereo_matcher,
+        )
+    )
+    for removed_path in (
+        "jist_onnx.h",
+        "mixvpr_onnx.h",
+        "patchnetvlad_onnx.h",
+        "JistONNX",
+        "MixVPRONNX",
+        "PatchNetVLADONNX",
+        "VPRONNXWrapper",
+        "kPatchNetVLAD",
+        "Ort::",
+        "OnnxStereoDepth",
+        "stereo_depth_onnx.h",
+    ):
+        assert removed_path not in runtime_text
+    assert "VPR models require a native TensorRT .engine file" in detector_source
+    assert "TensorRT JIST and MixVPR are the only supported VPR models" in params_source
+    assert "requires a TensorRT .engine file" in ros_interface
+
+    runtime_config_files = [
+        *list((SRC / "Kimera-VIO" / "params").rglob("*.yaml")),
+        *list(
+            (SRC / "Kimera-VIO-ROS2" / "kimera_vio_ros" / "param").rglob(
+                "*.yaml"
+            )
+        ),
+        *list((SRC / "sb_slam_ros2" / "launch").glob("*.py")),
+    ]
+    for path in runtime_config_files:
+        text = path.read_text(encoding="utf-8")
+        assert ".onnx" not in text, path
+
+    ground_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_multi_robot.launch.py"
+    )
+    assert "mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine" in ground_launch
+
+
 def test_distributed_launch_rejects_incomplete_yaml(tmp_path):
     launch = _module(
         "Kimera-Distributed/launch/"
@@ -100,6 +167,36 @@ def test_distributed_launch_rejects_incomplete_yaml(tmp_path):
     config.write_text("gt_files: []\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="non-scalar parameters"):
         launch._load_yaml(config)
+
+
+def test_graco_and_cbs_default_to_scale_sigma_point_one():
+    launch_files = (
+        "cbs_ros/launch/cbs_ros_node.launch.py",
+        "cbs_ros/launch/example.launch.py",
+        "sb_slam_ros2/launch/graco_robot.launch.py",
+        "sb_slam_ros2/launch/graco_ground_robot.launch.py",
+        "sb_slam_ros2/launch/graco_ground_01_02_03_multi_robot.launch.py",
+        "sb_slam_ros2/launch/graco_ground_02_03_04_05_multi_robot.launch.py",
+        (
+            "sb_slam_ros2/launch/"
+            "graco_ground_01_02_03_04_05_06_multi_robot.launch.py"
+        ),
+        "sb_slam_ros2/launch/graco_aerial_05_06_07_08_multi_robot.launch.py",
+    )
+    for launch_file in launch_files:
+        assert (
+            'DeclareLaunchArgument("sim3_scale_sigma", default_value="0.1")'
+            in _text(launch_file)
+        )
+
+    cbs_node = _text("cbs_ros/src/cbs_ros_node.cpp")
+    assert "double sim3_scale_sigma_{0.1};" in cbs_node
+
+    ground_profile = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg.launch.py"
+    )
+    assert '"sim3_scale_sigma": "0.1"' in ground_profile
 
 
 def test_aerial_05_uses_one_timestamped_rerun_recording():
@@ -150,6 +247,294 @@ def test_aerial_05_uses_one_timestamped_rerun_recording():
         )
 
 
+def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
+    reference = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_aug_ds.launch.py"
+    )
+    for expected in (
+        '"bag_rate", default_value="1.0"',
+        'default_value="/data/graco/aerial-05-40m"',
+        'default_value="/data/graco/aerial-06-20m_stereo_ros2"',
+        'default_value="/data/graco/aerial-07-25m_stereo_ros2"',
+        'default_value="/data/graco/aerial-08-25m_ros2"',
+        '"vio_mode": "stereo"',
+        '"vio_dataset_name": LaunchConfiguration("vio_dataset_name")',
+        (
+            '"distributed_dataset_name": LaunchConfiguration(\n'
+            '                "distributed_dataset_name"\n'
+            "            )"
+        ),
+        '"vpr_model_type": LaunchConfiguration("vpr_model_type")',
+        '"use_external_odom": "false"',
+        "JIST_r18_512_seqgem_simplified_fp16.engine",
+        "mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine",
+        '"loop_closure.max_submap_size": "10"',
+        '"loop_closure.max_submap_distance": "5"',
+        '"pgo_formulation": "sim3"',
+        '"sim3_scale_sigma": "0.05"',
+        '"visualization_mode", default_value="minimal"',
+    ):
+        assert expected in reference
+
+    distributed = _text(
+        "Kimera-Distributed/params/"
+        "visual_loopclosure_GrAcoJistDynamic.yaml"
+    )
+    assert "min_sim_vlad: 0.7" in distributed
+
+    fixed_distributed = _text(
+        "Kimera-Distributed/params/"
+        "visual_loopclosure_GrAcoJistFixed5.yaml"
+    )
+    assert "dist_local: 90" in fixed_distributed
+    assert "min_sim_vlad: 0.7" in fixed_distributed
+
+    dynamic = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatJistAugDs/LcdParams.yaml"
+    )
+    assert "vpr_seq_interval: 1" in dynamic
+    assert "max_covisibility_score: 0.1" in dynamic
+    assert "min_sim_score: 0.85" in dynamic
+    assert "max_consecutive_frame_covisibility_score: 1.0" in dynamic
+    assert "use_covis_projection: 1" in dynamic
+
+    fixed = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatJistAugFixed5/LcdParams.yaml"
+    )
+    assert "vpr_seq_interval: 1" in fixed
+    assert "vpr_short_sequence_policy: wait" in fixed
+    assert "max_covisibility_score: 1.0" in fixed
+    assert "min_sim_score: -1.0" in fixed
+    assert "max_consecutive_frame_covisibility_score: 1.0" in fixed
+    assert "use_covis_projection: 1" in fixed
+
+    fixed_noaug = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatJistNoAugFixed5/LcdParams.yaml"
+    )
+    assert "vpr_seq_interval: 1" in fixed_noaug
+    assert "vpr_short_sequence_policy: wait" in fixed_noaug
+    assert "max_covisibility_score: 1.0" in fixed_noaug
+    assert "min_sim_score: -1.0" in fixed_noaug
+    assert "max_consecutive_frame_covisibility_score: 1.0" in fixed_noaug
+    assert "use_covis_projection: 0" in fixed_noaug
+
+    ablation = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_aug_fixed5.launch.py"
+    )
+    assert "GrAcoStereoXfeatJistAugFixed5" in ablation
+    assert "GrAcoJistFixed5" in ablation
+    assert "graco_aerial_05_06_07_08_jist_aug_ds.launch.py" in ablation
+
+    noaug_ablation = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_no_aug_fixed5.launch.py"
+    )
+    assert "GrAcoStereoXfeatJistNoAugFixed5" in noaug_ablation
+    assert "GrAcoJistFixed5" in noaug_ablation
+    assert '"bag_rate": "1.0"' in noaug_ablation
+    assert "JIST_r18_512_seqgem_simplified_fp32.engine" in noaug_ablation
+    assert "rerun+http://192.168.0.206:9876/proxy" in noaug_ablation
+    assert '"start_zenoh_router": "false"' in noaug_ablation
+
+    mixvpr_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprAugNoDynamicI2/LcdParams.yaml"
+    )
+    assert "vpr_model_type: mixvpr" in mixvpr_params
+    assert "vpr_seq_interval: 2" in mixvpr_params
+    assert "max_covisibility_score: 1.0" in mixvpr_params
+    assert "min_sim_score: -1.0" in mixvpr_params
+    assert "max_consecutive_frame_covisibility_score: 1.0" in mixvpr_params
+    assert "use_covis_projection: 1" in mixvpr_params
+
+    mixvpr_distributed = _text(
+        "Kimera-Distributed/params/"
+        "visual_loopclosure_GrAcoMixVprNoDynamic.yaml"
+    )
+    assert "dist_local: 90" in mixvpr_distributed
+    assert "min_sim_vlad: 0.6" in mixvpr_distributed
+
+    mixvpr_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_mixvpr_no_dynamic.launch.py"
+    )
+    assert "GrAcoStereoXfeatMixVprAugNoDynamicI2" in mixvpr_launch
+    assert "GrAcoMixVprNoDynamic" in mixvpr_launch
+    assert '"vpr_model_type": "mixvpr"' in mixvpr_launch
+    assert "/data3/graco/aerial-05-40m_full_ros2" in mixvpr_launch
+    assert "/data3/graco/aerial-08-25m_full_ros2" in mixvpr_launch
+    assert "rerun+http://192.168.0.206:9876/proxy" in mixvpr_launch
+    assert '"start_zenoh_router": "false"' in mixvpr_launch
+    assert "graco_aerial_05_06_07_08_jist_aug_ds.launch.py" in mixvpr_launch
+
+    mixvpr_i5_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprAugNoDynamicI5/LcdParams.yaml"
+    )
+    assert "vpr_model_type: mixvpr" in mixvpr_i5_params
+    assert "vpr_seq_interval: 5" in mixvpr_i5_params
+    assert "max_covisibility_score: 1.0" in mixvpr_i5_params
+    assert "min_sim_score: -1.0" in mixvpr_i5_params
+    assert "max_consecutive_frame_covisibility_score: 1.0" in mixvpr_i5_params
+    assert "use_covis_projection: 1" in mixvpr_i5_params
+
+    mixvpr_i5_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_mixvpr_no_dynamic_i5.launch.py"
+    )
+    assert "GrAcoStereoXfeatMixVprAugNoDynamicI5" in mixvpr_i5_launch
+    assert "GrAcoMixVprNoDynamic" in mixvpr_i5_launch
+    assert '"vpr_model_type": "mixvpr"' in mixvpr_i5_launch
+    assert '"bag_rate": "1.0"' in mixvpr_i5_launch
+    assert "interval5" in mixvpr_i5_launch
+    assert '"start_zenoh_router": "false"' in mixvpr_i5_launch
+
+    mixvpr_noaug_i5_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprNoAugNoDynamicI5/LcdParams.yaml"
+    )
+    assert "vpr_model_type: mixvpr" in mixvpr_noaug_i5_params
+    assert "vpr_seq_interval: 5" in mixvpr_noaug_i5_params
+    assert "max_covisibility_score: 1.0" in mixvpr_noaug_i5_params
+    assert "min_sim_score: -1.0" in mixvpr_noaug_i5_params
+    assert "max_consecutive_frame_covisibility_score: 1.0" in (
+        mixvpr_noaug_i5_params
+    )
+    assert "use_covis_projection: 0" in mixvpr_noaug_i5_params
+
+    mixvpr_noaug_i5_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_mixvpr_no_aug_no_dynamic_i5.launch.py"
+    )
+    assert "GrAcoStereoXfeatMixVprNoAugNoDynamicI5" in (
+        mixvpr_noaug_i5_launch
+    )
+    assert "GrAcoMixVprNoDynamic" in mixvpr_noaug_i5_launch
+    assert '"vpr_model_type": "mixvpr"' in mixvpr_noaug_i5_launch
+    assert '"bag_rate": "1.0"' in mixvpr_noaug_i5_launch
+    assert "noaug-no-dynamic-interval5" in mixvpr_noaug_i5_launch
+    assert '"start_zenoh_router": "false"' in mixvpr_noaug_i5_launch
+
+    jist_noaug_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatJistDsNoAug/LcdParams.yaml"
+    )
+    assert "vpr_model_type: jist" in jist_noaug_params
+    assert "vpr_seq_interval: 1" in jist_noaug_params
+    assert "max_covisibility_score: 0.1" in jist_noaug_params
+    assert "min_sim_score: 0.85" in jist_noaug_params
+    assert "use_covis_projection: 0" in jist_noaug_params
+
+    mixvpr_ds_noaug_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprDsNoAugI2/LcdParams.yaml"
+    )
+    assert "vpr_model_type: mixvpr" in mixvpr_ds_noaug_params
+    assert "vpr_seq_interval: 2" in mixvpr_ds_noaug_params
+    assert "max_covisibility_score: 0.1" in mixvpr_ds_noaug_params
+    assert "min_sim_score: 0.85" in mixvpr_ds_noaug_params
+    assert "use_covis_projection: 0" in mixvpr_ds_noaug_params
+
+    mixvpr_ds_distributed = _text(
+        "Kimera-Distributed/params/"
+        "visual_loopclosure_GrAcoMixVprDynamic.yaml"
+    )
+    assert "dist_local: 30" in mixvpr_ds_distributed
+    assert "min_sim_vlad: 0.6" in mixvpr_ds_distributed
+
+    for launch_file, profile, distributed_profile, model in (
+        (
+            "graco_aerial_05_06_07_08_mixvpr_ds_no_aug.launch.py",
+            "GrAcoStereoXfeatMixVprDsNoAugI2",
+            "GrAcoMixVprDynamic",
+            "mixvpr",
+        ),
+        (
+            "graco_aerial_05_06_07_08_jist_ds_no_aug.launch.py",
+            "GrAcoStereoXfeatJistDsNoAug",
+            "GrAcoJistDynamic",
+            "jist",
+        ),
+    ):
+        noaug_launch = _text(f"sb_slam_ros2/launch/{launch_file}")
+        assert profile in noaug_launch
+        assert distributed_profile in noaug_launch
+        assert f'"vpr_model_type": "{model}"' in noaug_launch
+        assert "rerun+http://192.168.0.206:9876/proxy" in noaug_launch
+        assert '"start_zenoh_router": "false"' in noaug_launch
+
+    jist_noaug_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_ds_no_aug.launch.py"
+    )
+    assert "JIST_r18_512_seqgem_simplified_fp32.engine" in jist_noaug_launch
+    assert "JIST_r18_512_seqgem_simplified_fp16.engine" in jist_noaug_launch
+    assert '"models.jist": _default_jist_model_path()' in jist_noaug_launch
+
+    multi_robot = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_multi_robot.launch.py"
+    )
+    assert '"experiment_setup.yaml"' in multi_robot
+
+
+def test_mixvpr_interval5_uses_exact_single_frame_stride():
+    params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprAugNoDynamicI5/LcdParams.yaml"
+    )
+    assert "vpr_model_type: mixvpr" in params
+    assert "vpr_seq_interval: 5" in params
+    assert "max_covisibility_score: 1.0" in params
+    assert "min_sim_score: -1.0" in params
+    assert "use_covis_projection: 1" in params
+
+    launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_mixvpr_no_dynamic_i5.launch.py"
+    )
+    assert "GrAcoStereoXfeatMixVprAugNoDynamicI5" in launch
+    assert '"bag_rate": "1.0"' in launch
+    assert "interval5" in launch
+
+    detector = _text(
+        "Kimera-VIO/src/loopclosure/VLADLoopClosureDetector.cpp"
+    )
+    assert "vpr_db_->get_seq_length() == 1" in detector
+    assert "target_frame_id % vpr_seq_interval != 0u" in detector
+    assert "single_frame_sequence" in detector
+
+
+def test_mixvpr_interval5_noaug_toggles_only_projection():
+    aug_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprAugNoDynamicI5/LcdParams.yaml"
+    )
+    noaug_params = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoStereoXfeatMixVprNoAugNoDynamicI5/LcdParams.yaml"
+    )
+
+    def settings(text):
+        return {
+            line
+            for line in text.splitlines()
+            if line and not line.lstrip().startswith("#")
+        }
+
+    assert settings(aug_params) - settings(noaug_params) == {
+        "use_covis_projection: 1"
+    }
+    assert settings(noaug_params) - settings(aug_params) == {
+        "use_covis_projection: 0"
+    }
+
+
 def test_aerial_06_07_uses_separate_bags_without_cross_bag_clock():
     launch = _module(
         "sb_slam_ros2/launch/graco_aerial_06_07_multi_robot.launch.py"
@@ -175,13 +560,13 @@ def test_aerial_06_07_uses_separate_bags_without_cross_bag_clock():
     assert "TimerAction(period=1.0, actions=[vio_launch])" in profile
 
 
-def test_campus_minimal_visualization_adds_only_vio_tracking_images():
+def test_campus_minimal_visualization_adds_vio_tracking_and_trajectory():
     campus = _text("sb_slam_ros2/launch/campus_six_robot.launch.py")
     assert '"visualization_mode",\n                default_value="minimal"' in campus
     assert 'FindPackageShare("kimera_vio_ros")' in campus
     assert '"param",\n                        "D455"' in campus
     assert '"src", "Kimera-VIO", "params", "D455"' not in campus
-    assert '"tracking_image_only"' in campus
+    assert "vio_rerun_visualization_profile = visualization_mode" in campus
     assert '"rerun_visualization_profile": (' in campus
     assert '"rerun_tracking_image_jpeg_quality": LaunchConfiguration(' in (
         campus
@@ -243,7 +628,9 @@ def test_campus_minimal_visualization_adds_only_vio_tracking_images():
         "Kimera-VIO-ROS2/kimera_vio_ros/include/"
         "kimera_vio_ros/interfaces/RerunVisualizer.h"
     )
-    assert "VisualizationProfile::kTrackingImageOnly" in interface
+    assert "VisualizationProfile::kMinimal" in interface
+    assert "kTrackingImageOnly" not in interface
+    assert "kTrackingImageAndTrajectory" not in interface
     assert "rerun::EncodedImage::from_bytes" in interface
 
 
@@ -269,7 +656,7 @@ def test_aerial_05_06_07_08_is_partitionable_mono_experiment():
     )
     assert '"num_robots": "4"' in launch_text
     assert '"active_robot_ids"' in launch_text
-    assert '"bag_rate", default_value="0.6"' in launch_text
+    assert '"bag_rate", default_value="1.0"' in launch_text
     assert '"bag_start_delay", default_value="20.0"' in launch_text
     assert '"zenoh_router_startup_delay"' in launch_text
     assert (
@@ -288,7 +675,9 @@ def test_aerial_05_06_07_08_is_partitionable_mono_experiment():
     assert '"kimera_vio_ros_mono.launch.py"' in robot_launch
     assert '"pgo_formulation": "sim3"' in robot_launch
     assert '"rerun_enabled": detailed_rerun_enabled' in robot_launch
-    assert '"use_rerun_visualizer": detailed_rerun_enabled' in robot_launch
+    assert '"use_rerun_visualizer": "true"' in robot_launch
+    assert '"rerun_visualization_profile": vio_rerun_profile' in robot_launch
+    assert "vio_rerun_profile = visualization_mode" in robot_launch
     assert '"belief_republish_hellinger_threshold": LaunchConfiguration(' in (
         robot_launch
     )

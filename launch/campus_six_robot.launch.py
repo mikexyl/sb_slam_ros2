@@ -256,11 +256,7 @@ def _launch_setup(context, *args, **kwargs):
     ).strip().lower()
     if visualization_mode not in ("full", "minimal"):
         raise RuntimeError("visualization_mode must be full or minimal")
-    vio_rerun_visualization_profile = (
-        "full"
-        if visualization_mode == "full"
-        else "tracking_image_and_trajectory"
-    )
+    vio_rerun_visualization_profile = visualization_mode
 
     distributed_launch = PathJoinSubstitution(
         [
@@ -571,7 +567,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "models.mixvpr",
                 default_value=_default_model_path(
-                    "trt/mixvpr_resnet50_4096d_fp16.engine"
+                    "trt/mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine"
                 ),
             ),
             DeclareLaunchArgument(

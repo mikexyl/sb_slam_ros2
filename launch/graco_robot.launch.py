@@ -54,6 +54,22 @@ def _launch_setup(context, *args, **kwargs):
     ).perform(context).strip().lower()
     if vpr_model_type not in ("jist", "mixvpr"):
         raise RuntimeError("vpr_model_type must be jist or mixvpr")
+    stereo_depth_method = LaunchConfiguration(
+        "stereo_depth.method"
+    ).perform(context).strip()
+    valid_stereo_depth_methods = (
+        "",
+        "OpenCV_BM",
+        "OpenCV_SGBM",
+        "LibSGM",
+        "LightStereo",
+        "FastFoundationStereo",
+        "FFS",
+    )
+    if stereo_depth_method not in valid_stereo_depth_methods:
+        raise RuntimeError(
+            "stereo_depth.method must name a supported stereo backend"
+        )
 
     names_path = Path(
         LaunchConfiguration("robot_names_file").perform(context)
@@ -78,9 +94,6 @@ def _launch_setup(context, *args, **kwargs):
         name: _require_file(context, name)
         for name in (
             "models.xfeat",
-            "models.xfeat_interp_bilinear",
-            "models.xfeat_interp_bicubic",
-            "models.xfeat_interp_nearest",
             "models.lightglue_frontend",
             "models.lightglue_lcd",
         )
@@ -91,6 +104,13 @@ def _launch_setup(context, *args, **kwargs):
     models[selected_vpr_argument] = _require_file(
         context, selected_vpr_argument
     )
+    stereo_depth_engine = ""
+    if stereo_depth_method in ("LightStereo", "FastFoundationStereo", "FFS"):
+        if vio_mode != "stereo":
+            raise RuntimeError(
+                "TensorRT stereo depth requires vio_mode:=stereo"
+            )
+        stereo_depth_engine = _require_file(context, "models.stereo_depth")
     da3_engine = ""
     if dense_mapping_enabled:
         da3_engine = _require_file(context, "models.da3")
@@ -118,6 +138,7 @@ def _launch_setup(context, *args, **kwargs):
     detailed_rerun_enabled = (
         "true" if visualization_mode == "full" else "false"
     )
+    vio_rerun_profile = visualization_mode
 
     image_topic = LaunchConfiguration("image_topic").perform(context)
     if not image_topic:
@@ -174,6 +195,9 @@ def _launch_setup(context, *args, **kwargs):
             "vocab_path": vocabulary,
             "lightglue_model_path": models["models.lightglue_lcd"],
             "alpha": LaunchConfiguration("loop_closure.alpha"),
+            "min_sim_vlad": LaunchConfiguration(
+                "loop_closure.min_sim_vlad"
+            ),
             "bow_skip_num": LaunchConfiguration(
                 "loop_closure.bow_skip_num"
             ),
@@ -288,24 +312,18 @@ def _launch_setup(context, *args, **kwargs):
             "flush_period_s"
         ),
         "models.xfeat": models["models.xfeat"],
-        "models.xfeat_interp_bilinear": models[
-            "models.xfeat_interp_bilinear"
-        ],
-        "models.xfeat_interp_bicubic": models[
-            "models.xfeat_interp_bicubic"
-        ],
-        "models.xfeat_interp_nearest": models[
-            "models.xfeat_interp_nearest"
-        ],
         "models.lightglue_frontend": models["models.lightglue_frontend"],
         "models.lightglue_lcd": models["models.lightglue_lcd"],
         "models.jist": models["models.jist"],
         "models.mixvpr": models["models.mixvpr"],
+        "stereo_depth.method": stereo_depth_method,
+        "models.stereo_depth": stereo_depth_engine,
         "frame_id.base_link": base_frame,
         "frame_id.odom": odom_frame,
         "frame_id.map": map_frame,
         "frame_id.world": world_frame,
         "topic.imu.data": imu_topic,
+        "use_external_odom": LaunchConfiguration("use_external_odom"),
         "dense_mapping.publisher_enabled": LaunchConfiguration(
             "keyframe_state.publisher_enabled"
         ),
@@ -322,7 +340,10 @@ def _launch_setup(context, *args, **kwargs):
         "mono_depth.da3_baseline_ratio_factors_enabled": "false",
         "use_sim_time": LaunchConfiguration("use_sim_time"),
         "log_output_path": log_output_path,
-        "use_rerun_visualizer": detailed_rerun_enabled,
+        # Minimal mode keeps the bounded VIO tracking/LCD debug streams while
+        # suppressing the detailed distributed visualization payloads.
+        "use_rerun_visualizer": "true",
+        "rerun_visualization_profile": vio_rerun_profile,
         "rerun_application_id": rerun_application_id,
         "rerun_recording_id": rerun_recording_id,
         "rerun_host": rerun_host,
@@ -460,19 +481,12 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("vpr_model_type", default_value="jist"),
             DeclareLaunchArgument("models.xfeat", default_value=""),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_bilinear", default_value=""
-            ),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_bicubic", default_value=""
-            ),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_nearest", default_value=""
-            ),
             DeclareLaunchArgument("models.lightglue_frontend", default_value=""),
             DeclareLaunchArgument("models.lightglue_lcd", default_value=""),
             DeclareLaunchArgument("models.jist", default_value=""),
             DeclareLaunchArgument("models.mixvpr", default_value=""),
+            DeclareLaunchArgument("stereo_depth.method", default_value=""),
+            DeclareLaunchArgument("models.stereo_depth", default_value=""),
             DeclareLaunchArgument("models.da3", default_value=""),
             DeclareLaunchArgument("vocabulary_path", default_value=""),
             DeclareLaunchArgument("log_output", default_value="false"),
@@ -480,6 +494,11 @@ def generate_launch_description():
             DeclareLaunchArgument("image_topic", default_value=""),
             DeclareLaunchArgument("right_image_topic", default_value=""),
             DeclareLaunchArgument("imu_topic", default_value=""),
+            DeclareLaunchArgument(
+                "use_external_odom",
+                default_value="false",
+                description="Fuse external odometry in the VIO backend.",
+            ),
             DeclareLaunchArgument("descriptor_batch_size", default_value="5"),
             DeclareLaunchArgument("descriptor_stride", default_value="1"),
             DeclareLaunchArgument(
@@ -488,6 +507,9 @@ def generate_launch_description():
             DeclareLaunchArgument("flush_period_s", default_value="1.0"),
             DeclareLaunchArgument(
                 "loop_closure.alpha", default_value="0.7"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.min_sim_vlad", default_value=""
             ),
             DeclareLaunchArgument(
                 "loop_closure.bow_skip_num", default_value="1"
@@ -528,7 +550,7 @@ def generate_launch_description():
                 "loop_closure.adaptive_scoring_lambda",
                 default_value="0.0",
             ),
-            DeclareLaunchArgument("sim3_scale_sigma", default_value="0.05"),
+            DeclareLaunchArgument("sim3_scale_sigma", default_value="0.1"),
             DeclareLaunchArgument(
                 "pgo_formulation", default_value="sim3"
             ),

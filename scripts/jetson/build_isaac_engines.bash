@@ -23,7 +23,7 @@ required_models=(
   xfeat_320x224.onnx
   lg_320x224_dyn.onnx
   JIST_r18_512_seqgem_simplified.onnx
-  mixvpr_resnet50_4096d.onnx
+  mixvpr_resnet50_512d.onnx
 )
 for model in "${required_models[@]}"; do
   if [[ ! -f "${SOURCE_DIR}/${model}" ]]; then
@@ -75,8 +75,8 @@ build_engine \
   "${OUTPUT_DIR}/JIST_r18_512_seqgem_simplified_fp16.engine"
 
 build_engine \
-  mixvpr_resnet50_4096d.onnx \
-  "${OUTPUT_DIR}/mixvpr_resnet50_4096d_fp16.engine"
+  mixvpr_resnet50_512d.onnx \
+  "${OUTPUT_DIR}/mixvpr_resnet50_512d_fp16.engine"
 
 validate_engine() {
   local engine="$1"
@@ -98,7 +98,7 @@ validate_engine \
   "${OUTPUT_DIR}/lg_320x224_dyn_n1_o500_m1024_fp16.engine" \
   --shapes=mkpts0:1x500x2,feats0:1x500x64,mkpts1:1x500x2,feats1:1x500x64
 validate_engine "${OUTPUT_DIR}/JIST_r18_512_seqgem_simplified_fp16.engine"
-validate_engine "${OUTPUT_DIR}/mixvpr_resnet50_4096d_fp16.engine"
+validate_engine "${OUTPUT_DIR}/mixvpr_resnet50_512d_fp16.engine"
 
 sha256sum "${OUTPUT_DIR}"/*.engine | tee "${OUTPUT_DIR}/SHA256SUMS"
 printf 'TensorRT %s\n' "${trt_version}" | tee "${OUTPUT_DIR}/RUNTIME_VERSION"

@@ -64,15 +64,6 @@ def _launch_setup(context, *args, **kwargs):
                 "num_robots": "1",
                 "robot_names_file": str(names_path),
                 "models.xfeat": LaunchConfiguration("models.xfeat"),
-                "models.xfeat_interp_bilinear": LaunchConfiguration(
-                    "models.xfeat_interp_bilinear"
-                ),
-                "models.xfeat_interp_bicubic": LaunchConfiguration(
-                    "models.xfeat_interp_bicubic"
-                ),
-                "models.xfeat_interp_nearest": LaunchConfiguration(
-                    "models.xfeat_interp_nearest"
-                ),
                 "models.lightglue_frontend": LaunchConfiguration(
                     "models.lightglue_frontend"
                 ),
@@ -135,15 +126,6 @@ def generate_launch_description():
                 ),
             ),
             DeclareLaunchArgument("models.xfeat", default_value=""),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_bilinear", default_value=""
-            ),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_bicubic", default_value=""
-            ),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_nearest", default_value=""
-            ),
             DeclareLaunchArgument(
                 "models.lightglue_frontend", default_value=""
             ),

@@ -1,8 +1,8 @@
-"""Run the GrAco aerial-05/06/07/08 four-drone experiment.
+"""Run the GrAco Ground 2/3/4/5 four-robot experiment.
 
-Robot IDs and the default 0.6x playback rate match the ROS 1
-``code_slam_graco_a5678.launch`` experiment.  Each active robot runs
-monocular VIO, Distributed loop closure, and Sim3 CBS.  Dense mapping and its
+Robot IDs and names match the tested ROS 1
+``code_slam_graco_g2345.launch`` experiment. Each active robot runs stereo
+VIO, Distributed loop closure, and Sim3 CBS. Dense mapping and its
 keyframe-state publisher are deliberately disabled.
 
 ``active_robot_ids`` partitions the experiment across hosts.  For example,
@@ -31,12 +31,12 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 
 
-_EXPECTED_ROBOT_NAMES = ("a5", "a6", "a7", "a8")
+_EXPECTED_ROBOT_NAMES = ("g2", "g3", "g4", "g5")
 _BAG_ARGUMENTS = (
-    "aerial_05_bag_path",
-    "aerial_06_bag_path",
-    "aerial_07_bag_path",
-    "aerial_08_bag_path",
+    "ground_02_bag_path",
+    "ground_03_bag_path",
+    "ground_04_bag_path",
+    "ground_05_bag_path",
 )
 _SOURCE_IMAGE_TOPIC = "/camera_left/image_raw"
 _SOURCE_RIGHT_IMAGE_TOPIC = "/camera_right/image_raw"
@@ -45,7 +45,7 @@ _SOURCE_IMU_TOPIC = "/gnss/imu"
 
 def _timestamped_recording_id():
     timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S_%z")
-    return f"graco_aerial_05_06_07_08_{timestamp}"
+    return f"graco_ground_02_03_04_05_{timestamp}"
 
 
 def _default_model_path(filename):
@@ -214,7 +214,6 @@ def _launch_setup(context, *args, **kwargs):
         "verification_frame_batch_size",
         "flush_period_s",
         "loop_closure.alpha",
-        "loop_closure.min_sim_vlad",
         "loop_closure.bow_skip_num",
         "loop_closure.bow_batch_size",
         "loop_closure.vlc_batch_size",
@@ -242,7 +241,7 @@ def _launch_setup(context, *args, **kwargs):
         "start_zenoh_router",
     )
     run_manifest = {
-        "launch_file": "graco_aerial_05_06_07_08_multi_robot.launch.py",
+        "launch_file": "graco_ground_02_03_04_05_multi_robot.launch.py",
         "active_robot_ids": list(active_robot_ids),
         "robot_names_file": str(names_path),
         "bag_paths": {
@@ -288,9 +287,6 @@ def _launch_setup(context, *args, **kwargs):
         ),
         "flush_period_s": LaunchConfiguration("flush_period_s"),
         "loop_closure.alpha": LaunchConfiguration("loop_closure.alpha"),
-        "loop_closure.min_sim_vlad": LaunchConfiguration(
-            "loop_closure.min_sim_vlad"
-        ),
         "loop_closure.bow_skip_num": LaunchConfiguration(
             "loop_closure.bow_skip_num"
         ),
@@ -403,7 +399,7 @@ def _launch_setup(context, *args, **kwargs):
                     actions=[
                         EmitEvent(
                             event=Shutdown(
-                                reason="Aerial 5/6/7/8 smoke replay completed"
+                                reason="Ground 2/3/4/5 smoke replay completed"
                             )
                         )
                     ],
@@ -433,36 +429,36 @@ def generate_launch_description():
                     [
                         FindPackageShare("kimera_distributed"),
                         "params",
-                        "robot_names_graco.yaml",
+                        "robot_names_graco_gnd_2345.yaml",
                     ]
                 ),
             ),
-            DeclareLaunchArgument("vio_mode", default_value="mono"),
+            DeclareLaunchArgument("vio_mode", default_value="stereo"),
             DeclareLaunchArgument(
-                "vio_dataset_name", default_value="GrAcoMonoXfeat"
+                "vio_dataset_name", default_value="GrAcoGndStereoXfeat"
             ),
             DeclareLaunchArgument(
-                "distributed_dataset_name", default_value="GrAco"
+                "distributed_dataset_name", default_value="GrAcoGnd"
             ),
             DeclareLaunchArgument("vpr_model_type", default_value="jist"),
             DeclareLaunchArgument(
                 "use_external_odom", default_value="false"
             ),
             DeclareLaunchArgument(
-                "aerial_05_bag_path",
-                default_value="/data/graco/aerial-05-40m",
+                "ground_02_bag_path",
+                default_value="/data3/mikexyl/graco/ground-02",
             ),
             DeclareLaunchArgument(
-                "aerial_06_bag_path",
-                default_value="/data/graco/aerial-06-20m_ros2",
+                "ground_03_bag_path",
+                default_value="/data3/mikexyl/graco/ground-03_ros2",
             ),
             DeclareLaunchArgument(
-                "aerial_07_bag_path",
-                default_value="/data/graco/aerial-07-25m_ros2",
+                "ground_04_bag_path",
+                default_value="/data3/graco/ground-04_full_ros2",
             ),
             DeclareLaunchArgument(
-                "aerial_08_bag_path",
-                default_value="/data/graco/aerial-08-25m_ros2",
+                "ground_05_bag_path",
+                default_value="/data3/graco/ground-05_full_ros2",
             ),
             DeclareLaunchArgument("play_bags", default_value="true"),
             DeclareLaunchArgument("bag_rate", default_value="1.0"),
@@ -511,9 +507,6 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("flush_period_s", default_value="1.0"),
             DeclareLaunchArgument("loop_closure.alpha", default_value="0.7"),
-            DeclareLaunchArgument(
-                "loop_closure.min_sim_vlad", default_value=""
-            ),
             DeclareLaunchArgument(
                 "loop_closure.bow_skip_num", default_value="1"
             ),
@@ -577,11 +570,11 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "log_output_path",
-                default_value="/tmp/sb_slam_ros2_logs/a5678",
+                default_value="/tmp/sb_slam_ros2_logs/g2345",
             ),
             DeclareLaunchArgument(
                 "rerun_application_id",
-                default_value="graco_aerial_05_06_07_08_multi_robot",
+                default_value="graco_ground_02_03_04_05_multi_robot",
             ),
             DeclareLaunchArgument(
                 "rerun_recording_id",

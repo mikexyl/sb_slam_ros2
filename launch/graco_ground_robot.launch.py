@@ -278,7 +278,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "loop_closure.adaptive_scoring_lambda", default_value="0.0"
             ),
-            DeclareLaunchArgument("sim3_scale_sigma", default_value="0.05"),
+            DeclareLaunchArgument("sim3_scale_sigma", default_value="0.1"),
             DeclareLaunchArgument(
                 "sim3_odom_scale_sigma", default_value="-1"
             ),

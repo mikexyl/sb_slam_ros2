@@ -246,7 +246,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "models.jist",
                 default_value=_default_model_path(
-                    "JIST_r18_512_seqgem_simplified.onnx"
+                    "JIST_r18_512_seqgem_simplified_fp32.engine"
                 ),
             ),
             DeclareLaunchArgument("vocabulary_path", default_value=""),
@@ -266,7 +266,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "loop_closure.adaptive_scoring_lambda", default_value="0.0"
             ),
-            DeclareLaunchArgument("sim3_scale_sigma", default_value="0.05"),
+            DeclareLaunchArgument("sim3_scale_sigma", default_value="0.1"),
             DeclareLaunchArgument(
                 "sim3_odom_scale_sigma", default_value="-1"
             ),

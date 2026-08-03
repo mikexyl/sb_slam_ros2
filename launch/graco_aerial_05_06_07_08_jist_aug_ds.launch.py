@@ -16,6 +16,16 @@ def _timestamped_recording_id():
     return f"graco_a5678_jist_aug_ds_{timestamp}"
 
 
+def _timestamped_output_path():
+    timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
+    workspace_root = Path(os.environ.get("SB_SLAM_ROS2_WS", os.getcwd()))
+    run_name = (
+        "jist-aug-ds-boundary0.1-consecutive-disabled-"
+        f"jist0.7-keydiv0.85-seqdiv-off-sim3-{timestamp}"
+    )
+    return str(workspace_root / "src" / "code-logs" / "a5678" / run_name)
+
+
 def _default_model_path(filename):
     workspace_root = Path(os.environ.get("SB_SLAM_ROS2_WS", os.getcwd()))
     return str(workspace_root / "src" / "xfeat-cpp" / "onnx_model" / filename)
@@ -40,25 +50,19 @@ def generate_launch_description():
             "aerial_07_bag_path": LaunchConfiguration("aerial_07_bag_path"),
             "aerial_08_bag_path": LaunchConfiguration("aerial_08_bag_path"),
             "play_bags": LaunchConfiguration("play_bags"),
-            "bag_rate": "1.0",
+            "bag_rate": LaunchConfiguration("bag_rate"),
             "bag_playback_duration": LaunchConfiguration(
                 "bag_playback_duration"
             ),
             "bag_start_delay": LaunchConfiguration("bag_start_delay"),
             "vio_mode": "stereo",
-            "vio_dataset_name": "GrAcoStereoXfeatJistAugDs",
-            "distributed_dataset_name": "GrAcoJistDynamic",
-            "vpr_model_type": "jist",
+            "vio_dataset_name": LaunchConfiguration("vio_dataset_name"),
+            "distributed_dataset_name": LaunchConfiguration(
+                "distributed_dataset_name"
+            ),
+            "vpr_model_type": LaunchConfiguration("vpr_model_type"),
+            "use_external_odom": "false",
             "models.xfeat": LaunchConfiguration("models.xfeat"),
-            "models.xfeat_interp_bilinear": LaunchConfiguration(
-                "models.xfeat_interp_bilinear"
-            ),
-            "models.xfeat_interp_bicubic": LaunchConfiguration(
-                "models.xfeat_interp_bicubic"
-            ),
-            "models.xfeat_interp_nearest": LaunchConfiguration(
-                "models.xfeat_interp_nearest"
-            ),
             "models.lightglue_frontend": LaunchConfiguration(
                 "models.lightglue_frontend"
             ),
@@ -66,8 +70,15 @@ def generate_launch_description():
                 "models.lightglue_lcd"
             ),
             "models.jist": LaunchConfiguration("models.jist"),
+            "models.mixvpr": LaunchConfiguration("models.mixvpr"),
+            "descriptor_batch_size": "5",
             "descriptor_stride": "1",
+            "verification_frame_batch_size": "50",
+            "flush_period_s": "1.0",
             "loop_closure.alpha": "0.5",
+            "loop_closure.min_sim_vlad": LaunchConfiguration(
+                "loop_closure.min_sim_vlad"
+            ),
             "loop_closure.bow_skip_num": "1",
             "loop_closure.bow_batch_size": "50",
             "loop_closure.vlc_batch_size": "10",
@@ -81,6 +92,13 @@ def generate_launch_description():
             "loop_closure.adaptive_scoring_tau_min": "0.0",
             "loop_closure.adaptive_scoring_lambda": "0.0",
             "pgo_formulation": "sim3",
+            "sim3_scale_sigma": "0.05",
+            "sim3_odom_scale_sigma": "-1",
+            "sim3_loop_scale_sigma": "-1",
+            "sim3_inter_loop_scale_sigma": "-1",
+            "belief_stage_switch_strategy": "random",
+            "belief_stage_fixed_iterations": "10",
+            "belief_republish_hellinger_threshold": "0.01",
             "visualization_mode": LaunchConfiguration("visualization_mode"),
             "log_output": LaunchConfiguration("log_output"),
             "log_output_path": LaunchConfiguration("log_output_path"),
@@ -113,21 +131,22 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "aerial_05_bag_path",
-                default_value="/data3/graco/aerial-05-40m_full_ros2",
+                default_value="/data/graco/aerial-05-40m",
             ),
             DeclareLaunchArgument(
                 "aerial_06_bag_path",
-                default_value="/data3/graco/aerial-06-20m_full_ros2",
+                default_value="/data/graco/aerial-06-20m_stereo_ros2",
             ),
             DeclareLaunchArgument(
                 "aerial_07_bag_path",
-                default_value="/data3/graco/aerial-07-25m_full_ros2",
+                default_value="/data/graco/aerial-07-25m_stereo_ros2",
             ),
             DeclareLaunchArgument(
                 "aerial_08_bag_path",
-                default_value="/data3/graco/aerial-08-25m_full_ros2",
+                default_value="/data/graco/aerial-08-25m_ros2",
             ),
             DeclareLaunchArgument("play_bags", default_value="true"),
+            DeclareLaunchArgument("bag_rate", default_value="1.0"),
             DeclareLaunchArgument(
                 "bag_playback_duration", default_value="-1"
             ),
@@ -139,27 +158,33 @@ def generate_launch_description():
                 ),
             ),
             DeclareLaunchArgument(
+                "vio_dataset_name",
+                default_value="GrAcoStereoXfeatJistAugDs",
+                description=(
+                    "VIO parameter profile. Override only for a named "
+                    "sequence-strategy ablation."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "distributed_dataset_name",
+                default_value="GrAcoJistDynamic",
+                description=(
+                    "Distributed loop-closure parameter profile. Override "
+                    "only for a named ablation."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "vpr_model_type",
+                default_value="jist",
+                description=(
+                    "Global descriptor model. Override only from a named "
+                    "model ablation launch."
+                ),
+            ),
+            DeclareLaunchArgument(
                 "models.xfeat",
                 default_value=_default_model_path(
                     "xfeat_320x224_fp16.engine"
-                ),
-            ),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_bilinear",
-                default_value=_default_model_path(
-                    "interpolator_bilinear_320x224.onnx"
-                ),
-            ),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_bicubic",
-                default_value=_default_model_path(
-                    "interpolator_bicubic_320x224.onnx"
-                ),
-            ),
-            DeclareLaunchArgument(
-                "models.xfeat_interp_nearest",
-                default_value=_default_model_path(
-                    "interpolator_nearest_320x224.onnx"
                 ),
             ),
             DeclareLaunchArgument(
@@ -177,16 +202,25 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "models.jist",
                 default_value=_default_model_path(
-                    "JIST_r18_512_seqgem_simplified_fp32.engine"
+                    "JIST_r18_512_seqgem_simplified_fp16.engine"
+                ),
+            ),
+            DeclareLaunchArgument(
+                "models.mixvpr",
+                default_value=_default_model_path(
+                    "trt/mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine"
                 ),
             ),
             DeclareLaunchArgument(
                 "visualization_mode", default_value="minimal"
             ),
+            DeclareLaunchArgument(
+                "loop_closure.min_sim_vlad", default_value=""
+            ),
             DeclareLaunchArgument("log_output", default_value="false"),
             DeclareLaunchArgument(
                 "log_output_path",
-                default_value="/tmp/sb_slam_ros2_logs/a5678_jist_aug_ds",
+                default_value=_timestamped_output_path(),
             ),
             DeclareLaunchArgument(
                 "rerun_application_id",

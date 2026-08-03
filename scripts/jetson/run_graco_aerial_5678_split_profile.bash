@@ -27,9 +27,6 @@ required_files=(
   "${MODEL_DIR}/xfeat_320x224_fp16.engine"
   "${MODEL_DIR}/lg_320x224_dyn_n1_o500_m1024_fp16.engine"
   "${MODEL_DIR}/JIST_r18_512_seqgem_simplified_fp16.engine"
-  "${MODEL_DIR}/interpolator_bilinear_640x480.onnx"
-  "${MODEL_DIR}/interpolator_bicubic_640x480.onnx"
-  "${MODEL_DIR}/interpolator_nearest_640x480.onnx"
 )
 for required_file in "${required_files[@]}"; do
   if [[ ! -s "${required_file}" ]]; then
@@ -115,9 +112,6 @@ ros2 launch sb_slam_ros2 \
   robot_names_file:="${ROBOT_NAMES_FILE}" \
   aerial_05_bag_path:="${BAG_PATH}" \
   models.xfeat:="${MODEL_DIR}/xfeat_320x224_fp16.engine" \
-  models.xfeat_interp_bilinear:="${MODEL_DIR}/interpolator_bilinear_640x480.onnx" \
-  models.xfeat_interp_bicubic:="${MODEL_DIR}/interpolator_bicubic_640x480.onnx" \
-  models.xfeat_interp_nearest:="${MODEL_DIR}/interpolator_nearest_640x480.onnx" \
   models.lightglue_frontend:="${MODEL_DIR}/lg_320x224_dyn_n1_o500_m1024_fp16.engine" \
   models.lightglue_lcd:="${MODEL_DIR}/lg_320x224_dyn_n1_o500_m1024_fp16.engine" \
   models.jist:="${MODEL_DIR}/JIST_r18_512_seqgem_simplified_fp16.engine" \

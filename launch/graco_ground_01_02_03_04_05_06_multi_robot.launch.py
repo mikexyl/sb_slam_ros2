@@ -1,13 +1,13 @@
-"""Run the GrAco aerial-05/06/07/08 four-drone experiment.
+"""Run the GrAco Ground 1/2/3/4/5/6 six-robot experiment.
 
-Robot IDs and the default 0.6x playback rate match the ROS 1
-``code_slam_graco_a5678.launch`` experiment.  Each active robot runs
-monocular VIO, Distributed loop closure, and Sim3 CBS.  Dense mapping and its
+Robot IDs and names match the tested ROS 1
+``code_slam_graco_g123456.launch`` experiment. Each active robot runs stereo
+VIO, Distributed loop closure, and Sim3 CBS. Dense mapping and its
 keyframe-state publisher are deliberately disabled.
 
 ``active_robot_ids`` partitions the experiment across hosts.  For example,
-run IDs ``1,2,3`` on the workstation and ID ``0`` on the Jetson while keeping
-``num_robots`` equal to four on both hosts.
+run IDs ``1,2,3,4,5`` on the workstation and ID ``0`` on the Jetson while
+keeping ``num_robots`` equal to six on both hosts.
 """
 
 from datetime import datetime
@@ -31,12 +31,14 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 
 
-_EXPECTED_ROBOT_NAMES = ("a5", "a6", "a7", "a8")
+_EXPECTED_ROBOT_NAMES = ("g1", "g2", "g3", "g4", "g5", "g6")
 _BAG_ARGUMENTS = (
-    "aerial_05_bag_path",
-    "aerial_06_bag_path",
-    "aerial_07_bag_path",
-    "aerial_08_bag_path",
+    "ground_01_bag_path",
+    "ground_02_bag_path",
+    "ground_03_bag_path",
+    "ground_04_bag_path",
+    "ground_05_bag_path",
+    "ground_06_bag_path",
 )
 _SOURCE_IMAGE_TOPIC = "/camera_left/image_raw"
 _SOURCE_RIGHT_IMAGE_TOPIC = "/camera_right/image_raw"
@@ -45,7 +47,7 @@ _SOURCE_IMU_TOPIC = "/gnss/imu"
 
 def _timestamped_recording_id():
     timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S_%z")
-    return f"graco_aerial_05_06_07_08_{timestamp}"
+    return f"graco_ground_01_02_03_04_05_06_{timestamp}"
 
 
 def _default_model_path(filename):
@@ -66,7 +68,8 @@ def _parse_active_robot_ids(value):
     tokens = [token.strip() for token in str(value).split(",")]
     if not tokens or any(not token for token in tokens):
         raise RuntimeError(
-            "active_robot_ids must be a comma-separated list such as 0,1,2,3"
+            "active_robot_ids must be a comma-separated list such as "
+            "0,1,2,3,4,5"
         )
     try:
         robot_ids = tuple(int(token) for token in tokens)
@@ -80,7 +83,7 @@ def _parse_active_robot_ids(value):
         if robot_id < 0 or robot_id >= len(_EXPECTED_ROBOT_NAMES)
     ]
     if invalid:
-        raise RuntimeError("active_robot_ids entries must be in [0, 4)")
+        raise RuntimeError("active_robot_ids entries must be in [0, 6)")
     return robot_ids
 
 
@@ -209,12 +212,13 @@ def _launch_setup(context, *args, **kwargs):
         "models.lightglue_lcd",
         "models.jist",
         "models.mixvpr",
+        "stereo_depth.method",
+        "models.stereo_depth",
         "descriptor_batch_size",
         "descriptor_stride",
         "verification_frame_batch_size",
         "flush_period_s",
         "loop_closure.alpha",
-        "loop_closure.min_sim_vlad",
         "loop_closure.bow_skip_num",
         "loop_closure.bow_batch_size",
         "loop_closure.vlc_batch_size",
@@ -242,7 +246,7 @@ def _launch_setup(context, *args, **kwargs):
         "start_zenoh_router",
     )
     run_manifest = {
-        "launch_file": "graco_aerial_05_06_07_08_multi_robot.launch.py",
+        "launch_file": "graco_ground_01_02_03_04_05_06_multi_robot.launch.py",
         "active_robot_ids": list(active_robot_ids),
         "robot_names_file": str(names_path),
         "bag_paths": {
@@ -263,7 +267,7 @@ def _launch_setup(context, *args, **kwargs):
         [FindPackageShare("sb_slam_ros2"), "launch", "graco_robot.launch.py"]
     )
     shared_arguments = {
-        "num_robots": "4",
+        "num_robots": "6",
         "robot_names_file": str(names_path),
         "vio_mode": vio_mode,
         "vio_dataset_name": LaunchConfiguration("vio_dataset_name"),
@@ -279,6 +283,8 @@ def _launch_setup(context, *args, **kwargs):
         "models.lightglue_lcd": LaunchConfiguration("models.lightglue_lcd"),
         "models.jist": LaunchConfiguration("models.jist"),
         "models.mixvpr": LaunchConfiguration("models.mixvpr"),
+        "stereo_depth.method": LaunchConfiguration("stereo_depth.method"),
+        "models.stereo_depth": LaunchConfiguration("models.stereo_depth"),
         "vocabulary_path": LaunchConfiguration("vocabulary_path"),
         "log_output": LaunchConfiguration("log_output"),
         "descriptor_batch_size": LaunchConfiguration("descriptor_batch_size"),
@@ -288,9 +294,6 @@ def _launch_setup(context, *args, **kwargs):
         ),
         "flush_period_s": LaunchConfiguration("flush_period_s"),
         "loop_closure.alpha": LaunchConfiguration("loop_closure.alpha"),
-        "loop_closure.min_sim_vlad": LaunchConfiguration(
-            "loop_closure.min_sim_vlad"
-        ),
         "loop_closure.bow_skip_num": LaunchConfiguration(
             "loop_closure.bow_skip_num"
         ),
@@ -403,7 +406,9 @@ def _launch_setup(context, *args, **kwargs):
                     actions=[
                         EmitEvent(
                             event=Shutdown(
-                                reason="Aerial 5/6/7/8 smoke replay completed"
+                                reason=(
+                                    "Ground 1/2/3/4/5/6 smoke replay completed"
+                                )
                             )
                         )
                     ],
@@ -422,7 +427,7 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "active_robot_ids",
-                default_value="0,1,2,3",
+                default_value="0,1,2,3,4,5",
                 description=(
                     "Comma-separated robot IDs to launch on this host."
                 ),
@@ -433,36 +438,44 @@ def generate_launch_description():
                     [
                         FindPackageShare("kimera_distributed"),
                         "params",
-                        "robot_names_graco.yaml",
+                        "robot_names_graco_gnd_123456.yaml",
                     ]
                 ),
             ),
-            DeclareLaunchArgument("vio_mode", default_value="mono"),
+            DeclareLaunchArgument("vio_mode", default_value="stereo"),
             DeclareLaunchArgument(
-                "vio_dataset_name", default_value="GrAcoMonoXfeat"
+                "vio_dataset_name", default_value="GrAcoGndStereoXfeat"
             ),
             DeclareLaunchArgument(
-                "distributed_dataset_name", default_value="GrAco"
+                "distributed_dataset_name", default_value="GrAcoGnd"
             ),
             DeclareLaunchArgument("vpr_model_type", default_value="jist"),
             DeclareLaunchArgument(
                 "use_external_odom", default_value="false"
             ),
             DeclareLaunchArgument(
-                "aerial_05_bag_path",
-                default_value="/data/graco/aerial-05-40m",
+                "ground_01_bag_path",
+                default_value="/data3/graco/ground-01_full_ros2",
             ),
             DeclareLaunchArgument(
-                "aerial_06_bag_path",
-                default_value="/data/graco/aerial-06-20m_ros2",
+                "ground_02_bag_path",
+                default_value="/data3/mikexyl/graco/ground-02",
             ),
             DeclareLaunchArgument(
-                "aerial_07_bag_path",
-                default_value="/data/graco/aerial-07-25m_ros2",
+                "ground_03_bag_path",
+                default_value="/data3/mikexyl/graco/ground-03_ros2",
             ),
             DeclareLaunchArgument(
-                "aerial_08_bag_path",
-                default_value="/data/graco/aerial-08-25m_ros2",
+                "ground_04_bag_path",
+                default_value="/data3/graco/ground-04_full_ros2",
+            ),
+            DeclareLaunchArgument(
+                "ground_05_bag_path",
+                default_value="/data3/graco/ground-05_full_ros2",
+            ),
+            DeclareLaunchArgument(
+                "ground_06_bag_path",
+                default_value="/data3/graco/ground-06_full_ros2",
             ),
             DeclareLaunchArgument("play_bags", default_value="true"),
             DeclareLaunchArgument("bag_rate", default_value="1.0"),
@@ -502,6 +515,12 @@ def generate_launch_description():
                     "trt/mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine"
                 ),
             ),
+            DeclareLaunchArgument(
+                "stereo_depth.method", default_value=""
+            ),
+            DeclareLaunchArgument(
+                "models.stereo_depth", default_value=""
+            ),
             DeclareLaunchArgument("vocabulary_path", default_value=""),
             DeclareLaunchArgument("log_output", default_value="false"),
             DeclareLaunchArgument("descriptor_batch_size", default_value="5"),
@@ -511,9 +530,6 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("flush_period_s", default_value="1.0"),
             DeclareLaunchArgument("loop_closure.alpha", default_value="0.7"),
-            DeclareLaunchArgument(
-                "loop_closure.min_sim_vlad", default_value=""
-            ),
             DeclareLaunchArgument(
                 "loop_closure.bow_skip_num", default_value="1"
             ),
@@ -577,11 +593,11 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "log_output_path",
-                default_value="/tmp/sb_slam_ros2_logs/a5678",
+                default_value="/tmp/sb_slam_ros2_logs/g123456",
             ),
             DeclareLaunchArgument(
                 "rerun_application_id",
-                default_value="graco_aerial_05_06_07_08_multi_robot",
+                default_value="graco_ground_01_02_03_04_05_06_multi_robot",
             ),
             DeclareLaunchArgument(
                 "rerun_recording_id",

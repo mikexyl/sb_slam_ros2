@@ -199,6 +199,38 @@ def test_graco_and_cbs_default_to_scale_sigma_point_one():
     assert '"sim3_scale_sigma": "0.1"' in ground_profile
 
 
+def test_cbs_support_nodes_follow_stage_strategy():
+    example_launch = _text("cbs_ros/launch/example.launch.py")
+    offline_launch = _text("cbs_ros/launch/offline.launch.py")
+
+    for removed_argument in (
+        "run_graph_publisher",
+        "run_belief_stage_controller",
+    ):
+        assert removed_argument not in example_launch
+        assert removed_argument not in offline_launch
+
+    assert 'executable="graph_publisher_node"' in example_launch
+    assert 'if belief_stage_switch_strategy == "ros_message":' in (
+        example_launch
+    )
+    assert 'executable="belief_stage_controller_node"' in example_launch
+    assert (
+        '"belief_stage_switch_strategy": belief_stage_switch_strategy'
+        in offline_launch
+    )
+    assert (
+        'DeclareLaunchArgument(\n'
+        '                "belief_stage_switch_strategy", default_value="random"'
+        in offline_launch
+    )
+    assert (
+        '"synchronize_optimization_rounds": '
+        "synchronize_optimization_rounds"
+        in offline_launch
+    )
+
+
 def test_aerial_05_uses_one_timestamped_rerun_recording():
     multi_robot_launch = _module(
         "sb_slam_ros2/launch/graco_aerial_05_multi_robot.launch.py"

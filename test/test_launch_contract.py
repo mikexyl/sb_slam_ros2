@@ -1734,3 +1734,30 @@ def test_m2dgr_gate_123_realsense_mono_refinement_contract():
     assert "intrinsics: [617.971050917033" in left_camera
     assert "dist_local: 90" in distributed
     assert "min_sim_vlad: 0.8" in distributed
+
+
+def test_m2dgr_gate_123_lg_window100_refinement_contract():
+    experiment_launch = _text(
+        "sb_slam_ros2/launch/"
+        "m2dgr_gate_01_02_03_jist_ds_no_aug_lg_window100_"
+        "seqdiv_off_framerefine.launch.py"
+    )
+    profile_root = (
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "M2DGRRSXfeatJistDsNoAugLgWindow100/"
+    )
+    backend = _text(profile_root + "BackendParams.yaml")
+    frontend = _text(profile_root + "FrontendParams.yaml")
+    lcd = _text(profile_root + "LcdParams.yaml")
+
+    assert '"vio_mode": "mono"' in experiment_launch
+    assert '"jist_frame_refinement": "true"' in experiment_launch
+    assert '"loop_closure.min_sim_vlad": "0.8"' in experiment_launch
+    assert '"stereo_depth.method": ""' in experiment_launch
+    assert "M2DGRRSXfeatJistDsNoAugLgWindow100" in experiment_launch
+    assert "lg-rematch-window100" in experiment_launch
+    assert "nr_states: 100" in backend
+    assert "desc_tracking_mode: 2" in frontend
+    assert "feature_tracker_type: 1" in frontend
+    assert "rematch_threshold: 0.5" in frontend
+    assert "max_covisibility_score: 0.1" in lcd

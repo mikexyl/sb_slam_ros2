@@ -1531,3 +1531,34 @@ def test_aerial_5678_vpr_ablation_refinement_contract():
     assert robot_launch.count("jist_frame_refinement") >= 4
     assert distributed_launch.count("jist_frame_refinement") >= 2
     assert vio_launch.count("jist_frame_refinement") >= 2
+
+
+def test_ground_sequence_diversity_ablation_contract():
+    base_interface = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/src/interfaces/base_interface.cpp"
+    )
+    vio_launch = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/launch/kimera_vio_ros.launch.py"
+    )
+    robot_launch = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    multi_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_multi_robot.launch.py"
+    )
+    jist_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg.launch.py"
+    )
+    ablation_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg_"
+        "ffs_seqdiv_off_framerefine.launch.py"
+    )
+
+    assert '"loop_closure.min_sim_score", -1.0' in base_interface
+    for launch_text in (vio_launch, robot_launch, multi_launch, jist_launch):
+        assert launch_text.count("loop_closure.min_sim_score") >= 2
+    assert '"loop_closure.min_sim_score": "0.0"' in ablation_launch
+    assert '"jist_frame_refinement": "true"' in ablation_launch
+    assert '"stereo_depth.method": "FastFoundationStereo"' in ablation_launch
+    assert "seqdiv-off" in ablation_launch

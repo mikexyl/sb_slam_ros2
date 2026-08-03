@@ -329,6 +329,9 @@ def _launch_setup(context, *args, **kwargs):
         "jist_frame_refinement": LaunchConfiguration(
             "jist_frame_refinement"
         ),
+        "loop_closure.min_sim_score": LaunchConfiguration(
+            "loop_closure.min_sim_score"
+        ),
         "stereo_depth.method": stereo_depth_method,
         "models.stereo_depth": stereo_depth_engine,
         "frame_id.base_link": base_frame,
@@ -495,6 +498,9 @@ def generate_launch_description():
             DeclareLaunchArgument("vpr_model_type", default_value="jist"),
             DeclareLaunchArgument(
                 "jist_frame_refinement", default_value="false"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.min_sim_score", default_value="-1.0"
             ),
             DeclareLaunchArgument("models.xfeat", default_value=""),
             DeclareLaunchArgument("models.lightglue_frontend", default_value=""),

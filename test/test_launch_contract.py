@@ -1761,3 +1761,28 @@ def test_m2dgr_gate_123_lg_window100_refinement_contract():
     assert "feature_tracker_type: 1" in frontend
     assert "rematch_threshold: 0.5" in frontend
     assert "max_covisibility_score: 0.1" in lcd
+
+
+def test_m2dgr_gate_123_mixvpr06_window100_contract():
+    experiment_launch = _text(
+        "sb_slam_ros2/launch/"
+        "m2dgr_gate_01_02_03_mixvpr06_ds_no_aug_lg_window100_"
+        "seqdiv_off_framerefine_off.launch.py"
+    )
+
+    assert '"vio_mode": "mono"' in experiment_launch
+    assert '"vpr_model_type": "mixvpr"' in experiment_launch
+    assert '"jist_frame_refinement": "false"' in experiment_launch
+    assert '"loop_closure.min_sim_vlad": "0.6"' in experiment_launch
+    assert '"loop_closure.min_sim_score": "0.0"' in experiment_launch
+    assert '"stereo_depth.method": ""' in experiment_launch
+    assert "M2DGRRSXfeatJistDsNoAugLgWindow100" in experiment_launch
+    assert "mixvpr_resnet50_512d_fp16.engine" in experiment_launch
+    assert "mixvpr0.6-512d-ds-noaug-lg-rematch-window100" in (
+        experiment_launch
+    )
+    assert "boundary0.1-consecutive-disabled-seqdiv-off" in (
+        experiment_launch
+    )
+    assert "distlocal90-sim3-" in experiment_launch
+    assert '"framerefine-off-"' in experiment_launch

@@ -1663,3 +1663,74 @@ def test_ground_sequence_diversity_ablation_contract():
     assert "desc_tracking_mode: 2" in mono_lg_boundary005_frontend
     assert "publish_only_sequence: true" in mono_lg_boundary005_frontend
     assert "frontend_type: 0" in mono_lg_boundary005_pipeline
+
+
+def test_m2dgr_gate_123_realsense_mono_refinement_contract():
+    base_launch = _text(
+        "sb_slam_ros2/launch/m2dgr_gate_01_02_03_multi_robot.launch.py"
+    )
+    experiment_launch = _text(
+        "sb_slam_ros2/launch/"
+        "m2dgr_gate_01_02_03_jist_ds_no_aug_no_lg_"
+        "seqdiv_off_framerefine.launch.py"
+    )
+    profile_root = (
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "M2DGRRSXfeatJistDsNoAugNoLg/"
+    )
+    pipeline = _text(profile_root + "PipelineParams.yaml")
+    backend = _text(profile_root + "BackendParams.yaml")
+    frontend = _text(profile_root + "FrontendParams.yaml")
+    lcd = _text(profile_root + "LcdParams.yaml")
+    imu = _text(profile_root + "ImuParams.yaml")
+    left_camera = _text(profile_root + "LeftCameraParams.yaml")
+    distributed = _text(
+        "Kimera-Distributed/params/visual_loopclosure_M2DGR.yaml"
+    )
+
+    assert '_EXPECTED_ROBOT_NAMES = ("g1", "g2", "g3")' in base_launch
+    assert '"num_robots": "3"' in base_launch
+    assert "robot_names_m2dgr_gate.yaml" in base_launch
+    assert 'DeclareLaunchArgument("vio_mode", default_value="mono")' in (
+        base_launch
+    )
+    assert base_launch.count('executable="republish"') == 1
+    assert 'arguments=["compressed", "raw"]' in base_launch
+    assert "/camera/color/image_raw/compressed" in base_launch
+    assert '_SOURCE_IMU_TOPIC = "/handsfree/imu"' in base_launch
+    assert "/camera/right/image_raw/compressed" not in base_launch
+    assert "debayer" not in base_launch
+    assert 'DeclareLaunchArgument("bag_rate", default_value="0.8")' in (
+        base_launch
+    )
+
+    assert '"vio_mode": "mono"' in experiment_launch
+    assert '"jist_frame_refinement": "true"' in experiment_launch
+    assert '"loop_closure.min_sim_score": "0.0"' in experiment_launch
+    assert '"loop_closure.min_sim_vlad": "0.8"' in experiment_launch
+    assert '"stereo_depth.method": ""' in experiment_launch
+    assert "JIST_r18_512_seqgem_frames_fp32.engine" in experiment_launch
+    assert "fast_foundationstereo.engine" not in experiment_launch
+    assert 'DeclareLaunchArgument("bag_rate", default_value="0.8")' in (
+        experiment_launch
+    )
+    assert "realsense-mono" in experiment_launch
+    assert "distlocal90" in experiment_launch
+
+    assert "frontend_type: 0" in pipeline
+    assert "nr_states: 40" in backend
+    assert "maxFeatureAge: 20" in frontend
+    assert "desc_tracking_mode: 0" in frontend
+    assert "publish_only_sequence: true" in frontend
+    assert "optical_flow_type: 0" in frontend
+    assert "use_sky_segmentation_filter: 1" in frontend
+    assert "skyseg.engine" in frontend
+    assert "max_covisibility_score: 0.1" in lcd
+    assert "min_sim_score: 0.0" in lcd
+    assert "vpr_min_sequence_frames: 5" in lcd
+    assert "vpr_model_path: \"\"" in lcd
+    assert "rate_hz: 100" in imu
+    assert "resolution: [640, 480]" in left_camera
+    assert "intrinsics: [617.971050917033" in left_camera
+    assert "dist_local: 90" in distributed
+    assert "min_sim_vlad: 0.8" in distributed

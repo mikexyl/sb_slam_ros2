@@ -1800,3 +1800,47 @@ def test_m2dgr_gate_123_mixvpr06_window100_contract():
     assert "max_covisibility_score: 0.1" in lcd
     assert "vpr_model_type: mixvpr" in lcd
     assert 'vpr_model_path: ""' in lcd
+
+
+def test_ground_jist_anchor_scale_prior_is_forwarded_and_named():
+    ground_multi = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_multi_robot.launch.py"
+    )
+    ground_robot = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    jist_profile = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg.launch.py"
+    )
+    refined_profile = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist_ds_no_aug_no_lg_ffs_"
+        "seqdiv_off_framerefine.launch.py"
+    )
+    anchor_profile = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist08_ffs_seqdiv_off_"
+        "framerefine_anchorprior.launch.py"
+    )
+
+    for launch in (ground_multi, ground_robot, jist_profile, refined_profile):
+        assert '"sim3_anchor_scale_prior_sigma"' in launch
+    assert (
+        '"sim3_anchor_scale_prior_sigma", default_value="-1"'
+        in ground_multi
+    )
+    assert '"sim3_anchor_scale_prior_sigma": "0.05"' in anchor_profile
+    assert "anchorprior0.05" in anchor_profile
+
+    boundary005_anchor_profile = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist08_ffs_boundary005_"
+        "seqdiv_off_framerefine_anchorprior.launch.py"
+    )
+    assert '"sim3_anchor_scale_prior_sigma": "0.05"' in (
+        boundary005_anchor_profile
+    )
+    assert "boundary0.05" in boundary005_anchor_profile
+    assert "GrAcoGndStereoXfeatJistDsNoAugNoLgBoundary005" in (
+        boundary005_anchor_profile
+    )

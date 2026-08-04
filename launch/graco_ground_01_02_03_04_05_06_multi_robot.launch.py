@@ -238,6 +238,7 @@ def _launch_setup(context, *args, **kwargs):
         "sim3_odom_scale_sigma",
         "sim3_loop_scale_sigma",
         "sim3_inter_loop_scale_sigma",
+        "sim3_anchor_scale_prior_sigma",
         "belief_stage_switch_strategy",
         "belief_stage_fixed_iterations",
         "belief_republish_hellinger_threshold",
@@ -348,6 +349,9 @@ def _launch_setup(context, *args, **kwargs):
         ),
         "sim3_inter_loop_scale_sigma": LaunchConfiguration(
             "sim3_inter_loop_scale_sigma"
+        ),
+        "sim3_anchor_scale_prior_sigma": LaunchConfiguration(
+            "sim3_anchor_scale_prior_sigma"
         ),
         "belief_stage_switch_strategy": LaunchConfiguration(
             "belief_stage_switch_strategy"
@@ -592,6 +596,9 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "sim3_inter_loop_scale_sigma", default_value="-1"
+            ),
+            DeclareLaunchArgument(
+                "sim3_anchor_scale_prior_sigma", default_value="-1"
             ),
             DeclareLaunchArgument(
                 "belief_stage_switch_strategy", default_value="random"

@@ -107,6 +107,9 @@ def generate_launch_description():
             "sim3_odom_scale_sigma": "-1",
             "sim3_loop_scale_sigma": "-1",
             "sim3_inter_loop_scale_sigma": "-1",
+            "sim3_anchor_scale_prior_sigma": LaunchConfiguration(
+                "sim3_anchor_scale_prior_sigma"
+            ),
             "belief_stage_switch_strategy": "random",
             "belief_stage_fixed_iterations": "10",
             "belief_republish_hellinger_threshold": "0.01",
@@ -242,6 +245,9 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "models.stereo_depth", default_value=""
+            ),
+            DeclareLaunchArgument(
+                "sim3_anchor_scale_prior_sigma", default_value="-1"
             ),
             DeclareLaunchArgument(
                 "visualization_mode", default_value="minimal"

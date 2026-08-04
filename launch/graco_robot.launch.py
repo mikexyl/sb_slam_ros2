@@ -69,7 +69,6 @@ def _launch_setup(context, *args, **kwargs):
         "OpenCV_BM",
         "OpenCV_SGBM",
         "LibSGM",
-        "LightStereo",
         "FastFoundationStereo",
         "FFS",
     )
@@ -112,7 +111,7 @@ def _launch_setup(context, *args, **kwargs):
         context, selected_vpr_argument
     )
     stereo_depth_engine = ""
-    if stereo_depth_method in ("LightStereo", "FastFoundationStereo", "FFS"):
+    if stereo_depth_method in ("FastFoundationStereo", "FFS"):
         if vio_mode != "stereo":
             raise RuntimeError(
                 "TensorRT stereo depth requires vio_mode:=stereo"

@@ -1665,6 +1665,32 @@ def test_ground_sequence_diversity_ablation_contract():
     assert "frontend_type: 0" in mono_lg_boundary005_pipeline
 
 
+def test_lightstereo_backend_is_removed_in_favor_of_ffs():
+    stereo_params = _text(
+        "Kimera-VIO/include/kimera-vio/frontend/StereoMatchingParams.h"
+    )
+    stereo_matcher = _text("Kimera-VIO/src/frontend/StereoMatcher.cpp")
+    ros_interface = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/src/interfaces/base_interface.cpp"
+    )
+    robot_launch = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+
+    for source in (
+        stereo_params,
+        stereo_matcher,
+        ros_interface,
+        robot_launch,
+    ):
+        assert "LightStereo" not in source
+        assert "LIGHTSTEREO" not in source
+
+    assert "FAST_FOUNDATION_STEREO" in stereo_params
+    assert 'str == "FFS"' in stereo_params
+    assert "FastFoundationStereoDepth" in stereo_matcher
+    assert '"FastFoundationStereo",' in robot_launch
+    assert '"FFS",' in robot_launch
+
+
 def test_m2dgr_gate_123_realsense_mono_refinement_contract():
     base_launch = _text(
         "sb_slam_ros2/launch/m2dgr_gate_01_02_03_multi_robot.launch.py"

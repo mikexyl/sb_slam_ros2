@@ -1,4 +1,4 @@
-"""Run refined Ground 1-6 JIST 0.8 with a 0.05 anchor scale prior."""
+"""Run the legacy-named anchorprior profile with 0.05 anchor-belief sigma."""
 
 from datetime import datetime
 import os
@@ -42,7 +42,7 @@ def generate_launch_description():
                     )
                 ),
                 launch_arguments={
-                    "sim3_anchor_scale_prior_sigma": "0.05",
+                    "sim3_pose_scale_prior_sigma": "0.05",
                     "log_output_path": str(output_path),
                     "rerun_application_id": (
                         "graco_g123456_jist08_ffs_seqdiv_off_"

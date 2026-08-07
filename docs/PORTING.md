@@ -56,8 +56,7 @@ into `.deps/rerun/0.35.0`, installs it locally, and passes its
 
 The ROS 1 `xfeat-cpp` branch also expects third-party sources under
 `src/xfeat-cpp/thirdparty`. The workspace task script initializes the tracked
-`gms` and `lightstereo` submodules and checks out the tested `libSGM` fork
-commit used by the ROS 1 workspace.
+`gms` and `lightstereo` submodules.
 
 The workspace exports `src/sb_slam_ros2/compat/include` during build to cover
 small platform compatibility gaps without editing imported ROS 1 sources, such

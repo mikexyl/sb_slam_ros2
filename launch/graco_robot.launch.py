@@ -49,18 +49,11 @@ def _launch_setup(context, *args, **kwargs):
         raise RuntimeError(
             "dense mapping must be disabled for the stereo experiment"
         )
-    vpr_model_type = LaunchConfiguration(
-        "vpr_model_type"
-    ).perform(context).strip().lower()
-    if vpr_model_type not in ("jist", "mixvpr"):
-        raise RuntimeError("vpr_model_type must be jist or mixvpr")
     jist_frame_refinement = LaunchConfiguration(
         "jist_frame_refinement"
     ).perform(context).strip().lower()
     if jist_frame_refinement not in ("true", "false"):
         raise RuntimeError("jist_frame_refinement must be true or false")
-    if jist_frame_refinement == "true" and vpr_model_type != "jist":
-        raise RuntimeError("jist_frame_refinement requires vpr_model_type:=jist")
     stereo_depth_method = LaunchConfiguration(
         "stereo_depth.method"
     ).perform(context).strip()
@@ -68,7 +61,8 @@ def _launch_setup(context, *args, **kwargs):
         "",
         "OpenCV_BM",
         "OpenCV_SGBM",
-        "LibSGM",
+        "VPI",
+        "VPI_CUDA",
         "FastFoundationStereo",
         "FFS",
     )
@@ -104,12 +98,10 @@ def _launch_setup(context, *args, **kwargs):
             "models.lightglue_lcd",
         )
     }
-    models["models.jist"] = ""
-    models["models.mixvpr"] = ""
-    selected_vpr_argument = f"models.{vpr_model_type}"
-    models[selected_vpr_argument] = _require_file(
-        context, selected_vpr_argument
-    )
+    # Forward VPR engines as an artifact catalog. LcdParams.yaml selects the
+    # active VPR backend, and the VIO node validates only that selected path.
+    models["models.jist"] = LaunchConfiguration("models.jist").perform(context)
+    models["models.mixvpr"] = LaunchConfiguration("models.mixvpr").perform(context)
     stereo_depth_engine = ""
     if stereo_depth_method in ("FastFoundationStereo", "FFS"):
         if vio_mode != "stereo":
@@ -204,6 +196,30 @@ def _launch_setup(context, *args, **kwargs):
             "min_sim_vlad": LaunchConfiguration(
                 "loop_closure.min_sim_vlad"
             ),
+            "stereo_verification_method": LaunchConfiguration(
+                "loop_closure.stereo_verification_method"
+            ),
+            "teaser_noise_bound_m": LaunchConfiguration(
+                "loop_closure.teaser_noise_bound_m"
+            ),
+            "teaser_min_scale": LaunchConfiguration(
+                "loop_closure.teaser_min_scale"
+            ),
+            "teaser_max_scale": LaunchConfiguration(
+                "loop_closure.teaser_max_scale"
+            ),
+            "orbslam3_reprojection_threshold_px": LaunchConfiguration(
+                "loop_closure.orbslam3_reprojection_threshold_px"
+            ),
+            "orbslam3_min_scale": LaunchConfiguration(
+                "loop_closure.orbslam3_min_scale"
+            ),
+            "orbslam3_max_scale": LaunchConfiguration(
+                "loop_closure.orbslam3_max_scale"
+            ),
+            "verified_loop_scale_sigma": LaunchConfiguration(
+                "loop_closure.verified_scale_sigma"
+            ),
             "bow_skip_num": LaunchConfiguration(
                 "loop_closure.bow_skip_num"
             ),
@@ -279,8 +295,8 @@ def _launch_setup(context, *args, **kwargs):
             "sim3_inter_loop_scale_sigma": LaunchConfiguration(
                 "sim3_inter_loop_scale_sigma"
             ),
-            "sim3_anchor_scale_prior_sigma": LaunchConfiguration(
-                "sim3_anchor_scale_prior_sigma"
+            "sim3_pose_scale_prior_sigma": LaunchConfiguration(
+                "sim3_pose_scale_prior_sigma"
             ),
             "belief_stage_switch_strategy": LaunchConfiguration(
                 "belief_stage_switch_strategy"
@@ -497,7 +513,9 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "distributed_dataset_name", default_value="GrAco"
             ),
-            DeclareLaunchArgument("vpr_model_type", default_value="jist"),
+            # Compatibility-only experiment metadata. VPR selection belongs
+            # to the chosen vio_dataset_name/LcdParams.yaml profile.
+            DeclareLaunchArgument("vpr_model_type", default_value=""),
             DeclareLaunchArgument(
                 "jist_frame_refinement", default_value="false"
             ),
@@ -574,6 +592,32 @@ def generate_launch_description():
                 "loop_closure.adaptive_scoring_lambda",
                 default_value="0.0",
             ),
+            DeclareLaunchArgument(
+                "loop_closure.stereo_verification_method",
+                default_value="opengv_pnp",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_noise_bound_m", default_value="0.10"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_reprojection_threshold_px",
+                default_value="15.0",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.verified_scale_sigma", default_value="0.10"
+            ),
             DeclareLaunchArgument("sim3_scale_sigma", default_value="0.1"),
             DeclareLaunchArgument(
                 "pgo_formulation", default_value="sim3"
@@ -588,7 +632,7 @@ def generate_launch_description():
                 "sim3_inter_loop_scale_sigma", default_value="-1"
             ),
             DeclareLaunchArgument(
-                "sim3_anchor_scale_prior_sigma", default_value="-1"
+                "sim3_pose_scale_prior_sigma", default_value="-1"
             ),
             DeclareLaunchArgument(
                 "belief_stage_switch_strategy", default_value="random"

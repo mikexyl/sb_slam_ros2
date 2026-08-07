@@ -37,9 +37,15 @@ pixi run rosdep
 pixi run build
 pixi run build-teaserpp
 pixi run build-kimera-vio
+pixi run run-graco-aerial-5678-stereo
 pixi run test
 pixi run shell-env
 ```
+
+`run-graco-aerial-5678-stereo` was validated with full A5/A6/A7/A8 replay on
+2026-08-07 and produced usable VIO, distributed loop-closure, CBS, and replay
+artifacts. This is an operational smoke-test result rather than a frozen
+benchmark claim; parameter overrides can still change trajectory quality.
 
 The helper uses the container name `sb_slam_ros2` by default. Stop it with
 `docker stop sb_slam_ros2` when you are done, then start or enter it again with
@@ -47,6 +53,36 @@ the same helper.
 
 Ported package sources are tracked in `sb_slam_ros2.repos`. See
 `docs/PORTING.md` for the ROS 2 branches checked before importing packages.
+
+## GrAco aerial launch structure
+
+The aerial launch hierarchy has three explicit responsibilities:
+
+- `graco_aerial_robot.launch.py` is the nodes-only reusable unit. It launches
+  one namespaced VIO, Distributed, and CBS stack and never starts a bag player
+  or a Zenoh router.
+- `graco_aerial_single_robot.launch.py` includes that unit once and owns the
+  single bag player, run manifest, optional router, and replay shutdown policy.
+- `graco_aerial_05_06_07_08_multi_robot.launch.py` includes the same unit for
+  every ID in `active_robot_ids` and owns the corresponding experiment-level
+  bag players and manifest.
+
+Run the established A5 stereo profile through its compatibility entry point:
+
+```bash
+pixi run run-graco-aerial-05-stereo
+```
+
+Run the reusable single-robot entry point directly when changing the topology
+or profile:
+
+```bash
+ros2 launch sb_slam_ros2 graco_aerial_single_robot.launch.py \
+  robot_id:=0 robot_name:=a5 num_robots:=4
+```
+
+Use `num_robots:=1` for an isolated A5 graph. Keep `num_robots:=4` when this
+process is one host partition of the A5/A6/A7/A8 distributed experiment.
 
 ## Single-robot loop closure
 

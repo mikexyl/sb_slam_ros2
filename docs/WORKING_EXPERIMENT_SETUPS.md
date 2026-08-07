@@ -5,6 +5,20 @@ listed here means that its full bags completed without a node crash and that
 its outputs were preserved; it does not by itself certify every loop as an
 inlier or make the setup a final benchmark configuration.
 
+## Reusable GrAco aerial A5/A6/A7/A8 stereo task
+
+The restructured multi-robot entry point is available from the workspace root
+as:
+
+```bash
+pixi run --frozen --environment default run-graco-aerial-5678-stereo
+```
+
+The task was validated with full A5/A6/A7/A8 replay on 2026-08-07 and produced
+usable VIO, distributed loop-closure, CBS, and offline-replay artifacts. This
+records that the task is operational; it does not freeze the launch defaults
+as a final benchmark configuration.
+
 ## GrAco aerial A5/A6/A7/A8 — JIST, no augmentation, LightGlue, fixed five
 
 Tested on `192.168.0.148` on 2026-07-30.

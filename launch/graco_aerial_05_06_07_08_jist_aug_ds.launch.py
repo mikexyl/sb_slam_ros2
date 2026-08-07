@@ -94,6 +94,30 @@ def generate_launch_description():
             "loop_closure.adaptive_scoring_tau_max": "0.0",
             "loop_closure.adaptive_scoring_tau_min": "0.0",
             "loop_closure.adaptive_scoring_lambda": "0.0",
+            "loop_closure.stereo_verification_method": LaunchConfiguration(
+                "loop_closure.stereo_verification_method"
+            ),
+            "loop_closure.teaser_noise_bound_m": LaunchConfiguration(
+                "loop_closure.teaser_noise_bound_m"
+            ),
+            "loop_closure.teaser_min_scale": LaunchConfiguration(
+                "loop_closure.teaser_min_scale"
+            ),
+            "loop_closure.teaser_max_scale": LaunchConfiguration(
+                "loop_closure.teaser_max_scale"
+            ),
+            "loop_closure.orbslam3_reprojection_threshold_px": LaunchConfiguration(
+                "loop_closure.orbslam3_reprojection_threshold_px"
+            ),
+            "loop_closure.orbslam3_min_scale": LaunchConfiguration(
+                "loop_closure.orbslam3_min_scale"
+            ),
+            "loop_closure.orbslam3_max_scale": LaunchConfiguration(
+                "loop_closure.orbslam3_max_scale"
+            ),
+            "loop_closure.verified_scale_sigma": LaunchConfiguration(
+                "loop_closure.verified_scale_sigma"
+            ),
             "pgo_formulation": "sim3",
             "sim3_scale_sigma": "0.05",
             "sim3_odom_scale_sigma": "-1",
@@ -186,6 +210,32 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "jist_frame_refinement", default_value="false"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.stereo_verification_method",
+                default_value="opengv_pnp",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_noise_bound_m", default_value="0.10"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_reprojection_threshold_px",
+                default_value="15.0",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.verified_scale_sigma", default_value="0.10"
             ),
             DeclareLaunchArgument(
                 "models.xfeat",

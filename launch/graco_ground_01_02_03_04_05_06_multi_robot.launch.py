@@ -233,12 +233,20 @@ def _launch_setup(context, *args, **kwargs):
         "loop_closure.adaptive_scoring_tau_max",
         "loop_closure.adaptive_scoring_tau_min",
         "loop_closure.adaptive_scoring_lambda",
+        "loop_closure.stereo_verification_method",
+        "loop_closure.teaser_noise_bound_m",
+        "loop_closure.teaser_min_scale",
+        "loop_closure.teaser_max_scale",
+        "loop_closure.orbslam3_reprojection_threshold_px",
+        "loop_closure.orbslam3_min_scale",
+        "loop_closure.orbslam3_max_scale",
+        "loop_closure.verified_scale_sigma",
         "pgo_formulation",
         "sim3_scale_sigma",
         "sim3_odom_scale_sigma",
         "sim3_loop_scale_sigma",
         "sim3_inter_loop_scale_sigma",
-        "sim3_anchor_scale_prior_sigma",
+        "sim3_pose_scale_prior_sigma",
         "belief_stage_switch_strategy",
         "belief_stage_fixed_iterations",
         "belief_republish_hellinger_threshold",
@@ -339,6 +347,30 @@ def _launch_setup(context, *args, **kwargs):
         "loop_closure.adaptive_scoring_lambda": LaunchConfiguration(
             "loop_closure.adaptive_scoring_lambda"
         ),
+        "loop_closure.stereo_verification_method": LaunchConfiguration(
+            "loop_closure.stereo_verification_method"
+        ),
+        "loop_closure.teaser_noise_bound_m": LaunchConfiguration(
+            "loop_closure.teaser_noise_bound_m"
+        ),
+        "loop_closure.teaser_min_scale": LaunchConfiguration(
+            "loop_closure.teaser_min_scale"
+        ),
+        "loop_closure.teaser_max_scale": LaunchConfiguration(
+            "loop_closure.teaser_max_scale"
+        ),
+        "loop_closure.orbslam3_reprojection_threshold_px": LaunchConfiguration(
+            "loop_closure.orbslam3_reprojection_threshold_px"
+        ),
+        "loop_closure.orbslam3_min_scale": LaunchConfiguration(
+            "loop_closure.orbslam3_min_scale"
+        ),
+        "loop_closure.orbslam3_max_scale": LaunchConfiguration(
+            "loop_closure.orbslam3_max_scale"
+        ),
+        "loop_closure.verified_scale_sigma": LaunchConfiguration(
+            "loop_closure.verified_scale_sigma"
+        ),
         "sim3_scale_sigma": LaunchConfiguration("sim3_scale_sigma"),
         "pgo_formulation": LaunchConfiguration("pgo_formulation"),
         "sim3_odom_scale_sigma": LaunchConfiguration(
@@ -350,8 +382,8 @@ def _launch_setup(context, *args, **kwargs):
         "sim3_inter_loop_scale_sigma": LaunchConfiguration(
             "sim3_inter_loop_scale_sigma"
         ),
-        "sim3_anchor_scale_prior_sigma": LaunchConfiguration(
-            "sim3_anchor_scale_prior_sigma"
+        "sim3_pose_scale_prior_sigma": LaunchConfiguration(
+            "sim3_pose_scale_prior_sigma"
         ),
         "belief_stage_switch_strategy": LaunchConfiguration(
             "belief_stage_switch_strategy"
@@ -584,6 +616,32 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "loop_closure.adaptive_scoring_lambda", default_value="0.0"
             ),
+            DeclareLaunchArgument(
+                "loop_closure.stereo_verification_method",
+                default_value="opengv_pnp",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_noise_bound_m", default_value="0.10"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_reprojection_threshold_px",
+                default_value="15.0",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.verified_scale_sigma", default_value="0.10"
+            ),
             DeclareLaunchArgument("sim3_scale_sigma", default_value="0.1"),
             DeclareLaunchArgument(
                 "pgo_formulation", default_value="sim3"
@@ -598,7 +656,7 @@ def generate_launch_description():
                 "sim3_inter_loop_scale_sigma", default_value="-1"
             ),
             DeclareLaunchArgument(
-                "sim3_anchor_scale_prior_sigma", default_value="-1"
+                "sim3_pose_scale_prior_sigma", default_value="0.1"
             ),
             DeclareLaunchArgument(
                 "belief_stage_switch_strategy", default_value="random"

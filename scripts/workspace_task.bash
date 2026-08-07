@@ -17,9 +17,6 @@ RERUN_SDK_DIR="${RERUN_PREFIX}/lib/cmake/rerun_sdk"
 RERUN_ARCHIVE="${RERUN_ROOT}/rerun_cpp_sdk.zip"
 RERUN_URL="https://github.com/rerun-io/rerun/releases/download/${RERUN_VERSION}/rerun_cpp_sdk.zip"
 XFEAT_ROOT="${WORKSPACE_ROOT}/src/xfeat-cpp"
-LIBSGM_ROOT="${XFEAT_ROOT}/thirdparty/libsgm"
-LIBSGM_COMMIT="c9309ec7366db9cd10ea93eea4912c287484c60e"
-LIBSGM_URL="https://github.com/mikexyl/libSGM.git"
 COMPAT_INCLUDE_DIR="${PACKAGE_ROOT}/compat/include"
 BUILD_PARALLEL_JOBS="${BUILD_PARALLEL_JOBS:-12}"
 COLCON_PARALLEL_WORKERS="${COLCON_PARALLEL_WORKERS:-${BUILD_PARALLEL_JOBS}}"
@@ -101,18 +98,6 @@ ensure_xfeat_thirdparty() {
     -c url.https://github.com/.insteadOf=git@github.com: \
     submodule update --init --recursive
 
-  if [[ ! -d "${LIBSGM_ROOT}/.git" ]]; then
-    git clone "${LIBSGM_URL}" "${LIBSGM_ROOT}"
-  fi
-
-  if ! git -C "${LIBSGM_ROOT}" cat-file -e "${LIBSGM_COMMIT}^{commit}" 2>/dev/null; then
-    if ! git -C "${LIBSGM_ROOT}" remote get-url mikexyl >/dev/null 2>&1; then
-      git -C "${LIBSGM_ROOT}" remote add mikexyl "${LIBSGM_URL}"
-    fi
-    git -C "${LIBSGM_ROOT}" fetch mikexyl "${LIBSGM_COMMIT}"
-  fi
-
-  git -C "${LIBSGM_ROOT}" checkout "${LIBSGM_COMMIT}"
 }
 
 export_compat_includes() {
@@ -166,6 +151,10 @@ common_cmake_args=(
   -DCBS_BUILD_UTILS=OFF
   -DCBS_BUILD_EXAMPLES=OFF
 )
+
+if [[ -n "${CMAKE_MAKE_PROGRAM:-}" ]]; then
+  common_cmake_args+=("-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}")
+fi
 
 run_build() {
   local package_name="$1"

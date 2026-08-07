@@ -1,10 +1,12 @@
 """Run the remote-equivalent GrAco aerial-05/06/07/08 stereo experiment.
 
-The VIO and distributed LCD profiles mirror the known-good ROS 1
-``code_slam_graco_a5678.launch`` setup: GrAcoStereoXfeat, MixVPR, 1.0x
+The VIO and distributed LCD profiles use the validated GrAco A5678 setup:
+GrAcoStereoXfeat, JIST, 1.0x
 playback, alpha 0.5, and the original batching/submap/adaptive-scoring
-settings.  XFeat and LightGlue use the deployment TensorRT engines.  Sim3 CBS
-is retained, and dense mapping is disabled by the enclosed base launch.
+settings. XFeat and LightGlue use the deployment TensorRT engines, and dense
+stereo defaults to NVIDIA VPI CUDA SGM at the profile's 512x288 working
+resolution. Sim3 CBS is retained, and dense mapping is disabled by the
+enclosed base launch.
 """
 
 from datetime import datetime
@@ -28,6 +30,19 @@ def _default_model_path(filename):
     return str(workspace_root / "src" / "xfeat-cpp" / "onnx_model" / filename)
 
 
+def _default_mixvpr_model_path():
+    workspace_root = Path(os.environ.get("SB_SLAM_ROS2_WS", os.getcwd()))
+    model_root = workspace_root / "src" / "xfeat-cpp" / "onnx_model"
+    candidates = (
+        model_root / "trt" / "mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine",
+        model_root / "mixvpr_resnet50_512d_fp16.engine",
+    )
+    for model_path in candidates:
+        if model_path.is_file():
+            return str(model_path)
+    return str(candidates[0])
+
+
 def generate_launch_description():
     base_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -47,7 +62,7 @@ def generate_launch_description():
             "aerial_07_bag_path": LaunchConfiguration("aerial_07_bag_path"),
             "aerial_08_bag_path": LaunchConfiguration("aerial_08_bag_path"),
             "play_bags": LaunchConfiguration("play_bags"),
-            "bag_rate": "1.0",
+            "bag_rate": LaunchConfiguration("bag_rate"),
             "bag_playback_duration": LaunchConfiguration(
                 "bag_playback_duration"
             ),
@@ -55,7 +70,14 @@ def generate_launch_description():
             "vio_mode": "stereo",
             "vio_dataset_name": "GrAcoStereoXfeat",
             "distributed_dataset_name": "GrAcoStereo",
-            "vpr_model_type": "mixvpr",
+            "vpr_model_type": "jist",
+            "jist_frame_refinement": LaunchConfiguration(
+                "jist_frame_refinement"
+            ),
+            "pgo_formulation": LaunchConfiguration("pgo_formulation"),
+            "stereo_depth.method": LaunchConfiguration(
+                "stereo_depth.method"
+            ),
             "models.xfeat": LaunchConfiguration("models.xfeat"),
             "models.lightglue_frontend": LaunchConfiguration(
                 "models.lightglue_frontend"
@@ -77,6 +99,30 @@ def generate_launch_description():
             "loop_closure.adaptive_scoring_tau_max": "0.01",
             "loop_closure.adaptive_scoring_tau_min": "0.01",
             "loop_closure.adaptive_scoring_lambda": "1.0",
+            "loop_closure.stereo_verification_method": LaunchConfiguration(
+                "loop_closure.stereo_verification_method"
+            ),
+            "loop_closure.teaser_noise_bound_m": LaunchConfiguration(
+                "loop_closure.teaser_noise_bound_m"
+            ),
+            "loop_closure.teaser_min_scale": LaunchConfiguration(
+                "loop_closure.teaser_min_scale"
+            ),
+            "loop_closure.teaser_max_scale": LaunchConfiguration(
+                "loop_closure.teaser_max_scale"
+            ),
+            "loop_closure.orbslam3_reprojection_threshold_px": LaunchConfiguration(
+                "loop_closure.orbslam3_reprojection_threshold_px"
+            ),
+            "loop_closure.orbslam3_min_scale": LaunchConfiguration(
+                "loop_closure.orbslam3_min_scale"
+            ),
+            "loop_closure.orbslam3_max_scale": LaunchConfiguration(
+                "loop_closure.orbslam3_max_scale"
+            ),
+            "loop_closure.verified_scale_sigma": LaunchConfiguration(
+                "loop_closure.verified_scale_sigma"
+            ),
             "visualization_mode": LaunchConfiguration("visualization_mode"),
             "log_output": LaunchConfiguration("log_output"),
             "log_output_path": LaunchConfiguration("log_output_path"),
@@ -124,6 +170,7 @@ def generate_launch_description():
                 default_value="/data/graco/aerial-08-25m_ros2",
             ),
             DeclareLaunchArgument("play_bags", default_value="true"),
+            DeclareLaunchArgument("bag_rate", default_value="1.0"),
             DeclareLaunchArgument(
                 "bag_playback_duration", default_value="-1"
             ),
@@ -133,6 +180,41 @@ def generate_launch_description():
                 description=(
                     "Delay playback until all TensorRT engines initialize."
                 ),
+            ),
+            DeclareLaunchArgument(
+                "stereo_depth.method", default_value="VPI_CUDA"
+            ),
+            DeclareLaunchArgument(
+                "jist_frame_refinement", default_value="true"
+            ),
+            DeclareLaunchArgument(
+                "pgo_formulation", default_value="sim3"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.stereo_verification_method",
+                default_value="opengv_pnp",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_noise_bound_m", default_value="0.10"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_reprojection_threshold_px",
+                default_value="15.0",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.verified_scale_sigma", default_value="0.10"
             ),
             DeclareLaunchArgument(
                 "models.xfeat",
@@ -154,9 +236,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "models.mixvpr",
-                default_value=_default_model_path(
-                    "trt/mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine"
-                ),
+                default_value=_default_mixvpr_model_path(),
             ),
             DeclareLaunchArgument(
                 "visualization_mode", default_value="minimal"

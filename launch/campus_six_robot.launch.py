@@ -328,6 +328,30 @@ def _launch_setup(context, *args, **kwargs):
                     "verified_loop_translation_sigma_m": LaunchConfiguration(
                         "loop_closure.translation_sigma_m"
                     ),
+                    "stereo_verification_method": LaunchConfiguration(
+                        "loop_closure.stereo_verification_method"
+                    ),
+                    "teaser_noise_bound_m": LaunchConfiguration(
+                        "loop_closure.teaser_noise_bound_m"
+                    ),
+                    "teaser_min_scale": LaunchConfiguration(
+                        "loop_closure.teaser_min_scale"
+                    ),
+                    "teaser_max_scale": LaunchConfiguration(
+                        "loop_closure.teaser_max_scale"
+                    ),
+                    "orbslam3_reprojection_threshold_px": LaunchConfiguration(
+                        "loop_closure.orbslam3_reprojection_threshold_px"
+                    ),
+                    "orbslam3_min_scale": LaunchConfiguration(
+                        "loop_closure.orbslam3_min_scale"
+                    ),
+                    "orbslam3_max_scale": LaunchConfiguration(
+                        "loop_closure.orbslam3_max_scale"
+                    ),
+                    "verified_loop_scale_sigma": LaunchConfiguration(
+                        "loop_closure.verified_scale_sigma"
+                    ),
                     "max_submap_size": LaunchConfiguration(
                         "loop_closure.max_submap_size"
                     ),
@@ -368,14 +392,8 @@ def _launch_setup(context, *args, **kwargs):
                     "sim3_inter_loop_scale_sigma": LaunchConfiguration(
                         "sim3_inter_loop_scale_sigma"
                     ),
-                    "sim3_inter_loop_has_scale_measurement": LaunchConfiguration(
-                        "sim3_inter_loop_has_scale_measurement"
-                    ),
                     "sim3_pose_scale_prior_sigma": LaunchConfiguration(
                         "sim3_pose_scale_prior_sigma"
-                    ),
-                    "sim3_anchor_scale_prior_sigma": LaunchConfiguration(
-                        "sim3_anchor_scale_prior_sigma"
                     ),
                     "communication_topology_mode": "dynamic_factors",
                     "belief_stage_switch_strategy": LaunchConfiguration(
@@ -641,6 +659,32 @@ def generate_launch_description():
                 "loop_closure.translation_sigma_m", default_value="10.0"
             ),
             DeclareLaunchArgument(
+                "loop_closure.stereo_verification_method",
+                default_value="opengv_pnp",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_noise_bound_m", default_value="0.10"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_reprojection_threshold_px",
+                default_value="15.0",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.verified_scale_sigma", default_value="0.10"
+            ),
+            DeclareLaunchArgument(
                 "loop_closure.max_submap_size", default_value="10"
             ),
             DeclareLaunchArgument(
@@ -689,22 +733,12 @@ def generate_launch_description():
                 description="Near-fixed inter-robot loop scale.",
             ),
             DeclareLaunchArgument(
-                "sim3_inter_loop_has_scale_measurement",
-                default_value="false",
-                description=(
-                    "Whether inter-robot measurements explicitly observe "
-                    "relative scale. Campus loop measurements do not."
-                ),
-            ),
-            DeclareLaunchArgument(
                 "sim3_pose_scale_prior_sigma",
-                default_value="-1",
-                description="Negative disables absolute local-pose scale priors.",
-            ),
-            DeclareLaunchArgument(
-                "sim3_anchor_scale_prior_sigma",
-                default_value="-1",
-                description="Negative disables absolute robot-anchor scale priors.",
+                default_value="0.1",
+                description=(
+                    "Absolute log-scale prior sigma for owner-local Sim3 "
+                    "poses."
+                ),
             ),
             DeclareLaunchArgument(
                 "log_output_path",

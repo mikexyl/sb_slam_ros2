@@ -36,7 +36,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "sim3_anchor_scale_prior_sigma", default_value="-1"
+                "sim3_pose_scale_prior_sigma", default_value="0.1"
             ),
             DeclareLaunchArgument(
                 "log_output_path", default_value=str(output_path)
@@ -74,8 +74,8 @@ def generate_launch_description():
                     "loop_closure.min_sim_score": "0.0",
                     "stereo_depth.method": "FastFoundationStereo",
                     "models.stereo_depth": str(stereo_engine),
-                    "sim3_anchor_scale_prior_sigma": LaunchConfiguration(
-                        "sim3_anchor_scale_prior_sigma"
+                    "sim3_pose_scale_prior_sigma": LaunchConfiguration(
+                        "sim3_pose_scale_prior_sigma"
                     ),
                     "log_output": "true",
                     "log_output_path": LaunchConfiguration(

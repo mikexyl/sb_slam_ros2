@@ -90,7 +90,7 @@ def _launch_setup(context):
                 "/data3/graco/aerial-08-25m_full_ros2",
                 "/data/graco/aerial-08-25m_ros2",
             ),
-            "vio_dataset_name": "GrAcoStereoXfeatJistDsNoAug",
+            "vio_dataset_name": "GrAcoStereoXfeatJistDsNoAug10m",
             "distributed_dataset_name": "GrAcoJistDynamic",
             "vpr_model_type": "jist",
             "jist_frame_refinement": "false",

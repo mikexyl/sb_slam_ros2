@@ -328,7 +328,7 @@ def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
     )
     assert "vpr_seq_interval: 1" in dynamic
     assert "max_covisibility_score: 0.1" in dynamic
-    assert "min_sim_score: 0.85" in dynamic
+    assert "min_sim_score: 0.0" in dynamic
     assert "max_consecutive_frame_covisibility_score: 1.0" in dynamic
     assert "use_covis_projection: 1" in dynamic
 
@@ -350,7 +350,7 @@ def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
     assert "vpr_seq_interval: 1" in fixed_noaug
     assert "vpr_short_sequence_policy: wait" in fixed_noaug
     assert "max_covisibility_score: 1.0" in fixed_noaug
-    assert "min_sim_score: -1.0" in fixed_noaug
+    assert "min_sim_score: 0.0" in fixed_noaug
     assert "max_consecutive_frame_covisibility_score: 1.0" in fixed_noaug
     assert "use_covis_projection: 0" in fixed_noaug
     ablation = _text(
@@ -453,7 +453,7 @@ def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
 
     jist_noaug_params = _text(
         "Kimera-VIO-ROS2/kimera_vio_ros/param/"
-        "GrAcoStereoXfeatJistDsNoAug/LcdParams.yaml"
+        "GrAcoStereoXfeatJistDsNoAug10m/LcdParams.yaml"
     )
     assert "vpr_model_type: jist" in jist_noaug_params
     assert "vpr_seq_interval: 1" in jist_noaug_params
@@ -487,7 +487,7 @@ def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
         ),
         (
             "graco_aerial_05_06_07_08_jist_ds_no_aug.launch.py",
-            "GrAcoStereoXfeatJistDsNoAug",
+            "GrAcoStereoXfeatJistDsNoAug10m",
             "GrAcoJistDynamic",
             "jist",
         ),
@@ -503,8 +503,7 @@ def test_aerial_5678_named_jist_profiles_preserve_experiment_setup():
         "sb_slam_ros2/launch/"
         "graco_aerial_05_06_07_08_jist_ds_no_aug.launch.py"
     )
-    assert "JIST_r18_512_seqgem_simplified_fp32.engine" in jist_noaug_launch
-    assert "JIST_r18_512_seqgem_simplified_fp16.engine" in jist_noaug_launch
+    assert "JIST_r18_512_seqgem_frames_fp32.engine" in jist_noaug_launch
     assert '"models.jist": _default_jist_model_path()' in jist_noaug_launch
 
     multi_robot = _text(
@@ -536,9 +535,8 @@ def test_mixvpr_interval5_uses_exact_single_frame_stride():
     detector = _text(
         "Kimera-VIO/src/loopclosure/VLADLoopClosureDetector.cpp"
     )
-    assert "vpr_db_->get_seq_length() == 1" in detector
-    assert "target_frame_id % vpr_seq_interval != 0u" in detector
-    assert "single_frame_sequence" in detector
+    assert "new_seq_frames_.back()->id_ + vpr_seq_interval" in detector
+    assert "std::max<FrameId>" in detector
 
 
 def test_mixvpr_interval5_noaug_toggles_only_projection():
@@ -624,15 +622,15 @@ def test_campus_minimal_visualization_adds_vio_tracking_and_trajectory():
             f'"{scale_parameter}",\n                default_value="1e-6"'
             in campus
         )
-    for prior_parameter in (
-        "sim3_pose_scale_prior_sigma",
-        "sim3_anchor_scale_prior_sigma",
-    ):
-        assert f'"{prior_parameter}": LaunchConfiguration(' in campus
-        assert f'"{prior_parameter}",\n                default_value="-1"' in campus
-    assert '"sim3_inter_loop_has_scale_measurement"' in campus
-    assert 'default_value="false"' in campus
+    assert '"sim3_pose_scale_prior_sigma": LaunchConfiguration(' in campus
+    assert (
+        '"sim3_pose_scale_prior_sigma",\n                default_value="0.1"'
+        in campus
+    )
+    assert "sim3_anchor_scale_prior_sigma" not in campus
+    assert '"sim3_inter_loop_has_scale_measurement"' not in campus
     assert "sim3_anchor_belief_scale_sigma" not in campus
+    assert "lock_anchor_belief_scale" not in campus
     assert (
         '"pgo_formulation": LaunchConfiguration("pgo_formulation")' in campus
     )
@@ -696,15 +694,23 @@ def test_aerial_05_06_07_08_is_partitionable_mono_experiment():
     )
     assert '"dense_mapping.enabled": "false"' in launch_text
     assert '"keyframe_state.publisher_enabled": "false"' in launch_text
+    assert '"sim3_pose_scale_prior_sigma", default_value="0.1"' in launch_text
+    assert "sim3_anchor_scale_prior_sigma" not in launch_text
+    assert "sim3_anchor_belief_scale_sigma" not in launch_text
+    assert "lock_anchor_belief_scale" not in launch_text
     assert '"visualization_mode", default_value="minimal"' in launch_text
     assert '"play_bag": "false"' in launch_text
     assert '"use_sim_time": "false"' in launch_text
     assert "_SOURCE_IMAGE_TOPIC = \"/camera_left/image_raw\"" in launch_text
     assert "_SOURCE_IMU_TOPIC = \"/gnss/imu\"" in launch_text
+    assert '"graco_aerial_robot.launch.py"' in launch_text
+    assert '"graco_robot.launch.py"' not in launch_text
 
     robot_launch = _text("sb_slam_ros2/launch/graco_robot.launch.py")
     assert '"kimera_vio_ros_mono.launch.py"' in robot_launch
-    assert '"pgo_formulation": "sim3"' in robot_launch
+    assert '"pgo_formulation": LaunchConfiguration("pgo_formulation")' in (
+        robot_launch
+    )
     assert '"rerun_enabled": detailed_rerun_enabled' in robot_launch
     assert '"use_rerun_visualizer": "true"' in robot_launch
     assert '"rerun_visualization_profile": vio_rerun_profile' in robot_launch
@@ -723,8 +729,8 @@ def test_aerial_05_06_07_08_stereo_matches_ros1_experiment_profile():
         '"vio_mode": "stereo"',
         '"vio_dataset_name": "GrAcoStereoXfeat"',
         '"distributed_dataset_name": "GrAcoStereo"',
-        '"vpr_model_type": "mixvpr"',
-        '"bag_rate": "1.0"',
+        '"vpr_model_type": "jist"',
+        '"bag_rate": LaunchConfiguration("bag_rate")',
         '"loop_closure.alpha": "0.5"',
         '"loop_closure.bow_batch_size": "50"',
         '"loop_closure.vlc_batch_size": "10"',
@@ -740,6 +746,10 @@ def test_aerial_05_06_07_08_stereo_matches_ros1_experiment_profile():
         '"visualization_mode", default_value="minimal"',
     ):
         assert expected in launch_text
+
+    assert '"bag_rate", default_value="1.0"' in launch_text
+    assert "mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine" in launch_text
+    assert "mixvpr_resnet50_512d_fp16.engine" in launch_text
 
     base = _text(
         "sb_slam_ros2/launch/"
@@ -767,16 +777,110 @@ def test_aerial_05_06_07_08_stereo_matches_ros1_experiment_profile():
         "Kimera-VIO-ROS2/kimera_vio_ros/param/"
         "GrAcoStereoXfeat/LcdParams.yaml"
     )
-    assert "vpr_model_type: mixvpr" in lcd
-    assert "vpr_seq_interval: 5" in lcd
+    assert "vpr_model_type: jist" in lcd
+    assert "vpr_seq_interval: 1" in lcd
     assert "vpr_max_sequence_distance_m: 10" in lcd
 
     distributed = _text(
         "Kimera-Distributed/params/visual_loopclosure_GrAcoStereo.yaml"
     )
-    assert "min_sim_vlad: 0.6" in distributed
+    assert "min_sim_vlad: 0.7" in distributed
     assert "scoring_mode" not in distributed
     assert "use_score_combination" not in distributed
+
+
+def test_aerial_05_stereo_wrapper_runs_only_a5_with_local_defaults():
+    launch_text = _text(
+        "sb_slam_ros2/launch/graco_aerial_05_stereo.launch.py"
+    )
+    assert '"graco_aerial_single_robot.launch.py"' in launch_text
+    assert '"graco_aerial_05_06_07_08_stereo_multi_robot.launch.py"' not in (
+        launch_text
+    )
+    assert '"robot_id": "0"' in launch_text
+    assert '"robot_name": "a5"' in launch_text
+    assert '"num_robots": "4"' in launch_text
+
+    single = _text(
+        "sb_slam_ros2/launch/graco_aerial_single_robot.launch.py"
+    )
+    assert '"graco_aerial_robot.launch.py"' in single
+    assert '"graco_aerial_05_06_07_08_multi_robot.launch.py"' not in single
+    assert '"bag_path", default_value="/data/graco/aerial-05-40m"' in single
+    assert '"bag_rate", default_value="1.0"' in single
+    assert '"stereo_depth.method", default_value="VPI_CUDA"' in single
+    assert "mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine" in single
+    assert "mixvpr_resnet50_512d_fp16.engine" in single
+    assert '"visualization_mode", default_value="full"' in single
+    assert (
+        '"loop_closure.stereo_verification_method",\n'
+        '                default_value="opengv_pnp"'
+    ) in single
+    schedule_pos = single.index(
+        "OpaqueFunction(function=_schedule_bag_player)"
+    )
+    robot_start_pos = single.index(
+        'period=LaunchConfiguration("zenoh_router_startup_delay")'
+    )
+    assert schedule_pos < robot_start_pos
+    assert "OpaqueFunction(function=_bag_player)" not in single
+
+    # Launch files provide an artifact catalog; the selected VIO profile owns
+    # the JIST-versus-MixVPR decision.
+    robot = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    assert 'models["models.jist"] = LaunchConfiguration("models.jist")' in robot
+    assert (
+        'models["models.mixvpr"] = LaunchConfiguration("models.mixvpr")'
+        in robot
+    )
+    assert "selected_vpr_argument" not in robot
+    assert "jist_frame_refinement requires vpr_model_type" not in robot
+
+    interface = _text(
+        "Kimera-VIO-ROS2/kimera_vio_ros/src/interfaces/base_interface.cpp"
+    )
+    assert 'use_jist ? "models.jist" : "models.mixvpr"' in interface
+    assert "models.mixvpr was supplied for a non-MixVPR VPR profile" not in (
+        interface
+    )
+
+    aerial_robot = _text(
+        "sb_slam_ros2/launch/graco_aerial_robot.launch.py"
+    )
+    assert '"graco_robot.launch.py"' in aerial_robot
+    assert '"play_bag": "false"' in aerial_robot
+    assert "ros2\", \"bag\", \"play" not in aerial_robot
+
+    pixi = _text("../pixi.toml")
+    assert (
+        'run-graco-aerial-05-stereo = "ros2 launch sb_slam_ros2 '
+        'graco_aerial_05_stereo.launch.py"'
+    ) in pixi
+
+
+def test_aerial_05_mono_wrapper_runs_isolated_a5_profile():
+    launch_text = _text(
+        "sb_slam_ros2/launch/graco_aerial_05_mono.launch.py"
+    )
+    assert '"graco_aerial_single_robot.launch.py"' in launch_text
+    assert '"robot_id": "0"' in launch_text
+    assert '"robot_name": "a5"' in launch_text
+    assert '"num_robots": "1"' in launch_text
+    assert '"vio_mode": "mono"' in launch_text
+    assert '"vio_dataset_name": "GrAcoMonoXfeat"' in launch_text
+    assert '"distributed_dataset_name": "GrAco"' in launch_text
+    assert '"vpr_model_type": "jist"' in launch_text
+    assert '"jist_frame_refinement": "false"' in launch_text
+    assert '"image_topic": "/a5/camera_left/image_raw"' in launch_text
+    assert '"imu_topic": "/a5/gnss/imu"' in launch_text
+    assert '"stereo_depth.method": ""' in launch_text
+    assert '"right_image_topic"' not in launch_text
+
+    pixi = _text("../pixi.toml")
+    assert (
+        'run-graco-aerial-05-mono = "ros2 launch sb_slam_ros2 '
+        'graco_aerial_05_mono.launch.py"'
+    ) in pixi
 
 
 def test_aerial_05_06_07_08_jist_dynamic_uses_sequence_local_distance():
@@ -784,7 +888,10 @@ def test_aerial_05_06_07_08_jist_dynamic_uses_sequence_local_distance():
         "sb_slam_ros2/launch/"
         "graco_aerial_05_06_07_08_jist_aug_ds.launch.py"
     )
-    assert '"distributed_dataset_name": "GrAcoJistDynamic"' in launch_text
+    assert (
+        '"distributed_dataset_name",\n'
+        '                default_value="GrAcoJistDynamic"'
+    ) in launch_text
 
     distributed = _text(
         "Kimera-Distributed/params/"
@@ -842,14 +949,14 @@ def test_aerial_05_06_07_08_cross_host_wrappers_partition_robots():
     workstation_fastdds = _text(
         "sb_slam_ros2/config/fastdds_workstation_to_jetson.xml"
     )
-    assert "<address>192.168.0.220</address>" in workstation_fastdds
+    assert "<address>192.168.0.206</address>" in workstation_fastdds
     assert "<address>192.168.0.217</address>" in workstation_fastdds
 
     jetson_fastdds = _text(
         "sb_slam_ros2/config/fastdds_jetson_to_workstation.xml"
     )
     assert "<address>192.168.0.217</address>" in jetson_fastdds
-    assert "<address>192.168.0.220</address>" in jetson_fastdds
+    assert "<address>192.168.0.206</address>" in jetson_fastdds
 
 
 def test_cbs_writes_component_timing_for_jetson_benchmarking():
@@ -1552,6 +1659,20 @@ def test_aerial_5678_vpr_ablation_refinement_contract():
     )
     assert sequence_contract(mixvpr_profile) == sequence_contract(jist_profile)
 
+    mono_profile_root = (
+        "Kimera-VIO-ROS2/kimera_vio_ros/param/"
+        "GrAcoMonoXfeatJistDsNoAug/"
+    )
+    mono_pipeline = _text(mono_profile_root + "PipelineParams.yaml")
+    mono_frontend = _text(mono_profile_root + "FrontendParams.yaml")
+    mono_lcd = _text(mono_profile_root + "LcdParams.yaml")
+    assert "frontend_type: 0" in mono_pipeline
+    assert "useStereoTracking: 0" in mono_frontend
+    assert "desc_tracking_mode: 2" in mono_frontend
+    assert "vpr_max_sequence_distance_m: 10" in mono_lcd
+    assert "max_covisibility_score: 0.1" in mono_lcd
+    assert "use_covis_projection: 0" in mono_lcd
+
     robot_launch = _text("sb_slam_ros2/launch/graco_robot.launch.py")
     distributed_launch = _text(
         "Kimera-Distributed/launch/"
@@ -1674,6 +1795,10 @@ def test_lightstereo_backend_is_removed_in_favor_of_ffs():
         "Kimera-VIO-ROS2/kimera_vio_ros/src/interfaces/base_interface.cpp"
     )
     robot_launch = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    aerial_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_multi_robot.launch.py"
+    )
 
     for source in (
         stereo_params,
@@ -1689,6 +1814,32 @@ def test_lightstereo_backend_is_removed_in_favor_of_ffs():
     assert "FastFoundationStereoDepth" in stereo_matcher
     assert '"FastFoundationStereo",' in robot_launch
     assert '"FFS",' in robot_launch
+    assert '"VPI_CUDA",' in robot_launch
+    assert '"VPI",' in robot_launch
+    assert aerial_launch.count('"stereo_depth.method"') >= 3
+    assert aerial_launch.count('"models.stereo_depth"') >= 3
+    assert (
+        'DeclareLaunchArgument(\n'
+        '                "models.stereo_depth",\n'
+        '                default_value="",\n'
+        "            )"
+    ) in aerial_launch
+
+
+def test_vpi_cuda_stereo_launch_contract():
+    stereo_params = _text(
+        "Kimera-VIO/include/kimera-vio/frontend/StereoMatchingParams.h"
+    )
+    stereo_matcher = _text("Kimera-VIO/src/frontend/StereoMatcher.cpp")
+    stereo_launch = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_stereo_multi_robot.launch.py"
+    )
+
+    assert "VPI_CUDA" in stereo_params
+    assert "VPIStereoDepth" in stereo_matcher
+    assert '"stereo_depth.method", default_value="VPI_CUDA"' in stereo_launch
+    assert '"stereo_depth.method": LaunchConfiguration(' in stereo_launch
 
 
 def test_m2dgr_gate_123_realsense_mono_refinement_contract():
@@ -1828,7 +1979,7 @@ def test_m2dgr_gate_123_mixvpr06_window100_contract():
     assert 'vpr_model_path: ""' in lcd
 
 
-def test_ground_jist_anchor_scale_prior_is_forwarded_and_named():
+def test_ground_jist_absolute_scale_priors_are_forwarded_and_named():
     ground_multi = _text(
         "sb_slam_ros2/launch/"
         "graco_ground_01_02_03_04_05_06_multi_robot.launch.py"
@@ -1850,12 +2001,13 @@ def test_ground_jist_anchor_scale_prior_is_forwarded_and_named():
     )
 
     for launch in (ground_multi, ground_robot, jist_profile, refined_profile):
-        assert '"sim3_anchor_scale_prior_sigma"' in launch
+        assert '"sim3_pose_scale_prior_sigma"' in launch
+        assert "sim3_anchor_scale_prior_sigma" not in launch
     assert (
-        '"sim3_anchor_scale_prior_sigma", default_value="-1"'
+        '"sim3_pose_scale_prior_sigma", default_value="0.1"'
         in ground_multi
     )
-    assert '"sim3_anchor_scale_prior_sigma": "0.05"' in anchor_profile
+    assert '"sim3_pose_scale_prior_sigma": "0.05"' in anchor_profile
     assert "anchorprior0.05" in anchor_profile
 
     boundary005_anchor_profile = _text(
@@ -1863,10 +2015,75 @@ def test_ground_jist_anchor_scale_prior_is_forwarded_and_named():
         "graco_ground_01_02_03_04_05_06_jist08_ffs_boundary005_"
         "seqdiv_off_framerefine_anchorprior.launch.py"
     )
-    assert '"sim3_anchor_scale_prior_sigma": "0.05"' in (
+    assert '"sim3_pose_scale_prior_sigma": "0.05"' in (
         boundary005_anchor_profile
     )
     assert "boundary0.05" in boundary005_anchor_profile
     assert "GrAcoGndStereoXfeatJistDsNoAugNoLgBoundary005" in (
         boundary005_anchor_profile
+    )
+
+
+def test_g123456_teaser_sim3_launch_contract():
+    profile = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_jist08_ffs_boundary005_"
+        "seqdiv_off_framerefine_anchorprior_teaser_sim3.launch.py"
+    )
+    assert '"loop_closure.stereo_verification_method": "teaser_sim3"' in profile
+    assert '"loop_closure.teaser_noise_bound_m": "0.10"' in profile
+    assert '"loop_closure.teaser_min_scale": "0.5"' in profile
+    assert '"loop_closure.teaser_max_scale": "2.0"' in profile
+    assert '"loop_closure.verified_scale_sigma": "0.10"' in profile
+    assert '"jist_frame_refinement": "true"' in profile
+    assert '"sim3_pose_scale_prior_sigma": "0.05"' in profile
+    assert "boundary0.05" in profile
+    assert "teaser-sim3" in profile
+
+
+def test_scale_aware_verifier_parameters_propagate_through_launch_layers():
+    ground = _text(
+        "sb_slam_ros2/launch/"
+        "graco_ground_01_02_03_04_05_06_multi_robot.launch.py"
+    )
+    robot = _text("sb_slam_ros2/launch/graco_robot.launch.py")
+    aerial = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_multi_robot.launch.py"
+    )
+    aerial_stereo = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_stereo_multi_robot.launch.py"
+    )
+    aerial_jist = _text(
+        "sb_slam_ros2/launch/"
+        "graco_aerial_05_06_07_08_jist_aug_ds.launch.py"
+    )
+    distributed = _text(
+        "Kimera-Distributed/launch/"
+        "kimera_distributed_loop_closure_ros.launch.py"
+    )
+    for parameter in (
+        "stereo_verification_method",
+        "teaser_noise_bound_m",
+        "teaser_min_scale",
+        "teaser_max_scale",
+        "orbslam3_reprojection_threshold_px",
+        "orbslam3_min_scale",
+        "orbslam3_max_scale",
+    ):
+        assert f'"loop_closure.{parameter}"' in ground
+        assert f'"loop_closure.{parameter}"' in robot
+        assert f'"loop_closure.{parameter}"' in aerial
+        assert f'"loop_closure.{parameter}"' in aerial_stereo
+        assert f'"loop_closure.{parameter}"' in aerial_jist
+        assert f'"{parameter}"' in distributed
+    assert '"loop_closure.verified_scale_sigma"' in ground
+    assert '"loop_closure.verified_scale_sigma"' in robot
+    assert '"loop_closure.verified_scale_sigma"' in aerial
+    assert '"loop_closure.verified_scale_sigma"' in aerial_stereo
+    assert '"loop_closure.verified_scale_sigma"' in aerial_jist
+    assert '"verified_loop_scale_sigma"' in distributed
+    assert '"stereo_verification_method", default_value="opengv_pnp"' in (
+        distributed
     )

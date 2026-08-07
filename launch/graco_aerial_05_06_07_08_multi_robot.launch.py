@@ -1,9 +1,10 @@
-"""Run the GrAco aerial-05/06/07/08 four-drone experiment.
+"""Orchestrate a GrAco aerial-05/06/07/08 experiment.
 
-Robot IDs and the default 0.6x playback rate match the ROS 1
-``code_slam_graco_a5678.launch`` experiment.  Each active robot runs
-monocular VIO, Distributed loop closure, and Sim3 CBS.  Dense mapping and its
-keyframe-state publisher are deliberately disabled.
+Each active ID instantiates ``graco_aerial_robot.launch.py`` once.  This file
+owns only experiment-wide topology, bag playback, run metadata, shutdown, and
+the optional Zenoh router.  VIO mode and algorithm profiles remain launch
+arguments so named experiment wrappers can configure them without duplicating
+the robot stack.  Dense mapping and its keyframe-state publisher are disabled.
 
 ``active_robot_ids`` partitions the experiment across hosts.  For example,
 run IDs ``1,2,3`` on the workstation and ID ``0`` on the Jetson while keeping
@@ -210,6 +211,8 @@ def _launch_setup(context, *args, **kwargs):
         "models.lightglue_lcd",
         "models.jist",
         "models.mixvpr",
+        "stereo_depth.method",
+        "models.stereo_depth",
         "descriptor_batch_size",
         "descriptor_stride",
         "verification_frame_batch_size",
@@ -228,11 +231,20 @@ def _launch_setup(context, *args, **kwargs):
         "loop_closure.adaptive_scoring_tau_max",
         "loop_closure.adaptive_scoring_tau_min",
         "loop_closure.adaptive_scoring_lambda",
+        "loop_closure.stereo_verification_method",
+        "loop_closure.teaser_noise_bound_m",
+        "loop_closure.teaser_min_scale",
+        "loop_closure.teaser_max_scale",
+        "loop_closure.orbslam3_reprojection_threshold_px",
+        "loop_closure.orbslam3_min_scale",
+        "loop_closure.orbslam3_max_scale",
+        "loop_closure.verified_scale_sigma",
         "pgo_formulation",
         "sim3_scale_sigma",
         "sim3_odom_scale_sigma",
         "sim3_loop_scale_sigma",
         "sim3_inter_loop_scale_sigma",
+        "sim3_pose_scale_prior_sigma",
         "belief_stage_switch_strategy",
         "belief_stage_fixed_iterations",
         "belief_republish_hellinger_threshold",
@@ -260,8 +272,15 @@ def _launch_setup(context, *args, **kwargs):
     ) as stream:
         yaml.safe_dump(run_manifest, stream, sort_keys=False)
 
+    # Instantiate the same nodes-only aerial robot primitive used by the
+    # standalone single-robot experiment.  This file owns only experiment-
+    # level topology, bag playback, manifests, and global services.
     robot_launch = PathJoinSubstitution(
-        [FindPackageShare("sb_slam_ros2"), "launch", "graco_robot.launch.py"]
+        [
+            FindPackageShare("sb_slam_ros2"),
+            "launch",
+            "graco_aerial_robot.launch.py",
+        ]
     )
     shared_arguments = {
         "num_robots": "4",
@@ -283,6 +302,8 @@ def _launch_setup(context, *args, **kwargs):
         "models.lightglue_lcd": LaunchConfiguration("models.lightglue_lcd"),
         "models.jist": LaunchConfiguration("models.jist"),
         "models.mixvpr": LaunchConfiguration("models.mixvpr"),
+        "stereo_depth.method": LaunchConfiguration("stereo_depth.method"),
+        "models.stereo_depth": LaunchConfiguration("models.stereo_depth"),
         "vocabulary_path": LaunchConfiguration("vocabulary_path"),
         "log_output": LaunchConfiguration("log_output"),
         "descriptor_batch_size": LaunchConfiguration("descriptor_batch_size"),
@@ -331,6 +352,30 @@ def _launch_setup(context, *args, **kwargs):
         "loop_closure.adaptive_scoring_lambda": LaunchConfiguration(
             "loop_closure.adaptive_scoring_lambda"
         ),
+        "loop_closure.stereo_verification_method": LaunchConfiguration(
+            "loop_closure.stereo_verification_method"
+        ),
+        "loop_closure.teaser_noise_bound_m": LaunchConfiguration(
+            "loop_closure.teaser_noise_bound_m"
+        ),
+        "loop_closure.teaser_min_scale": LaunchConfiguration(
+            "loop_closure.teaser_min_scale"
+        ),
+        "loop_closure.teaser_max_scale": LaunchConfiguration(
+            "loop_closure.teaser_max_scale"
+        ),
+        "loop_closure.orbslam3_reprojection_threshold_px": LaunchConfiguration(
+            "loop_closure.orbslam3_reprojection_threshold_px"
+        ),
+        "loop_closure.orbslam3_min_scale": LaunchConfiguration(
+            "loop_closure.orbslam3_min_scale"
+        ),
+        "loop_closure.orbslam3_max_scale": LaunchConfiguration(
+            "loop_closure.orbslam3_max_scale"
+        ),
+        "loop_closure.verified_scale_sigma": LaunchConfiguration(
+            "loop_closure.verified_scale_sigma"
+        ),
         "sim3_scale_sigma": LaunchConfiguration("sim3_scale_sigma"),
         "pgo_formulation": LaunchConfiguration("pgo_formulation"),
         "sim3_odom_scale_sigma": LaunchConfiguration(
@@ -341,6 +386,9 @@ def _launch_setup(context, *args, **kwargs):
         ),
         "sim3_inter_loop_scale_sigma": LaunchConfiguration(
             "sim3_inter_loop_scale_sigma"
+        ),
+        "sim3_pose_scale_prior_sigma": LaunchConfiguration(
+            "sim3_pose_scale_prior_sigma"
         ),
         "belief_stage_switch_strategy": LaunchConfiguration(
             "belief_stage_switch_strategy"
@@ -509,6 +557,13 @@ def generate_launch_description():
                     "trt/mixvpr_resnet50_512d_fp16_sm120_trt10.13.engine"
                 ),
             ),
+            DeclareLaunchArgument(
+                "stereo_depth.method", default_value=""
+            ),
+            DeclareLaunchArgument(
+                "models.stereo_depth",
+                default_value="",
+            ),
             DeclareLaunchArgument("vocabulary_path", default_value=""),
             DeclareLaunchArgument("log_output", default_value="false"),
             DeclareLaunchArgument("descriptor_batch_size", default_value="5"),
@@ -557,6 +612,32 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "loop_closure.adaptive_scoring_lambda", default_value="0.0"
             ),
+            DeclareLaunchArgument(
+                "loop_closure.stereo_verification_method",
+                default_value="opengv_pnp",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_noise_bound_m", default_value="0.10"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.teaser_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_reprojection_threshold_px",
+                default_value="15.0",
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_min_scale", default_value="0.5"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.orbslam3_max_scale", default_value="2.0"
+            ),
+            DeclareLaunchArgument(
+                "loop_closure.verified_scale_sigma", default_value="0.10"
+            ),
             DeclareLaunchArgument("sim3_scale_sigma", default_value="0.1"),
             DeclareLaunchArgument(
                 "pgo_formulation", default_value="sim3"
@@ -569,6 +650,9 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "sim3_inter_loop_scale_sigma", default_value="-1"
+            ),
+            DeclareLaunchArgument(
+                "sim3_pose_scale_prior_sigma", default_value="0.1"
             ),
             DeclareLaunchArgument(
                 "belief_stage_switch_strategy", default_value="random"
